@@ -1,0 +1,81 @@
+name: Bug report
+description: Report a reproducible defect to help us fix it quickly.
+title: "[bug]: <short summary>"
+labels:
+  - bug
+  - needs-triage
+body:
+  - type: checkboxes
+    id: prior-checks
+    attributes:
+      label: Before submitting
+      description: Confirm you've done these checks.
+      options:
+        - label: I searched existing issues and discussions
+          required: true
+        - label: I reviewed the documentation
+          required: false
+  - type: input
+    id: versions
+    attributes:
+      label: Affected version(s)
+      description: Provide the version, commit, or tag. If building from source, include the commit SHA.
+      placeholder: v1.2.3 or 0123abcd
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      placeholder: What did you expect to happen?
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      placeholder: What happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproduction steps
+      description: Minimal steps to reproduce. Include commands and inputs.
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+      render: bash
+    validations:
+      required: true
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Environment
+      description: Select the environment closest to your setup.
+      multiple: true
+      options:
+        - macOS
+        - Linux
+        - Windows
+        - Docker
+        - Browser: Chrome
+        - Browser: Firefox
+        - Browser: Safari
+        - Browser: Edge
+  - type: input
+    id: runtime
+    attributes:
+      label: Runtime versions
+      description: Include language/tool versions (e.g., Node, npm, Vite).
+      placeholder: "node 20.x, npm 10.x, vite 5.x"
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs or stack traces
+      description: Paste minimal logs. Redact secrets.
+      render: shell
+  - type: input
+    id: minimal-repro
+    attributes:
+      label: Minimal reproduction repo or link
+      placeholder: "https://github.com/your/repro or gist link"

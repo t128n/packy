@@ -1,0 +1,20 @@
+name: Documentation improvement
+description: Suggest changes to improve documentation.
+title: "[docs]: <short summary>"
+labels:
+  - documentation
+body:
+  - type: input
+    id: path
+    attributes:
+      label: Page or file path
+      placeholder: README.md or src/lib/npm.ts
+  - type: textarea
+    id: current
+    attributes:
+      label: Current behavior/content
+  - type: textarea
+    id: change
+    attributes:
+      label: Proposed change
+      description: Include examples or snippets where useful.

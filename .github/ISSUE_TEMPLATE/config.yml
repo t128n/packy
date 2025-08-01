@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Discussions
+    url: https://github.com/t128n/packy/discussions
+    about: Ask questions and start open-ended conversations here.
+  - name: Security Policy
+    url: https://github.com/t128n/packy/security/policy
+    about: Report vulnerabilities privately following our policy.

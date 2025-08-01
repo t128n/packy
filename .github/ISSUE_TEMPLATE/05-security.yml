@@ -1,0 +1,19 @@
+name: Security report
+description: Guidance for reporting vulnerabilities responsibly.
+title: "[security]: <short summary>"
+labels:
+  - security
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please do not disclose sensitive details here.
+        Follow our security policy to report vulnerabilities privately.
+        See SECURITY.md or contact the maintainers directly.
+  - type: checkboxes
+    id: ack
+    attributes:
+      label: Acknowledgement
+      options:
+        - label: I will report sensitive details through the security policy channel
+          required: true

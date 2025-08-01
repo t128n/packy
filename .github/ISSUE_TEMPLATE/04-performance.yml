@@ -1,0 +1,30 @@
+name: Performance issue
+description: Report a performance regression or bottleneck.
+title: "[perf]: <short summary>"
+labels:
+  - performance
+body:
+  - type: textarea
+    id: scenario
+    attributes:
+      label: Scenario and expectations
+      description: What workload, dataset size, and expected performance?
+    validations:
+      required: true
+  - type: textarea
+    id: measurements
+    attributes:
+      label: Measurements/benchmarks
+      description: Include steps, metrics, samples; provide baseline vs. current.
+      render: markdown
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component/area
+      options:
+        - bundling
+        - downloads
+        - terminal
+        - ui
+        - npm logic
+        - build
