@@ -1,69 +1,45 @@
-# React + TypeScript + Vite
+# 🎒 packy: Web-Based NPM Bundler
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Packy is a modern, browser-based npm bundler built with React, TypeScript, Vite and WebContainers. It empowers developers to bundle npm packages directly in the browser; no backend required. Packy provides a fast, intuitive UI for exploring, bundling, and downloading npm packages, making it ideal for rapid prototyping, education, and sharing code.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **Client-Side Bundling:** Bundle npm packages in the browser—no server, no install.
+- **Modern UI:** Built with reusable UI primitives for a consistent, accessible experience.
+- **Panel-Based Layout:** Modular panels for package bundling, downloads, and terminal output.
+- **Instant Downloads:** Download bundled packages as ready-to-use files.
+- **Debounced Actions:** Responsive UI with debounced input and download logic.
+- **No Global State:** State flows via React hooks and props for clarity and maintainability.
 
-## Expanding the ESLint configuration
+## How It Works
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+Packy leverages browser-based npm logic to fetch, bundle, and serve packages. All operations are performed client-side, ensuring privacy and speed. The app shell coordinates layout and panel registration, while each panel is self-contained and communicates via props.
 
-```js
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## Project Structure
 
-      // Remove tseslint.configs.recommended and replace with this
-      ...tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      ...tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      ...tseslint.configs.stylisticTypeChecked,
+- App.tsx, main.tsx: App entry and mounting
+- app-shell.tsx: Layout and panel registration
+- components: Panels and UI primitives
+- npm.ts: Core npm/package logic
+- hooks: Custom hooks for debouncing and downloads
+- public: Static assets
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+## Getting Started
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+1. **Install dependencies:**
+   ```sh
+   npm install
+   ```
+2. **Start the development server:**
+   ```sh
+   npm run dev
+   ```
+3. **Open [http://localhost:5173](http://localhost:5173) in your browser.**
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Contributing
 
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+Contributions are welcome! Please follow the established component and panel structure, reuse UI primitives, and keep all logic client-side.
+
+## License
+
+MIT

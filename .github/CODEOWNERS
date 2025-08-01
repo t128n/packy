@@ -1,0 +1,5 @@
+# See https://docs.github.com/en/github/creating-cloning-and-archiving-repositories/about-code-owners
+# This file designates code owners for the repository.
+# Format: path @github-username
+
+* @t128n
