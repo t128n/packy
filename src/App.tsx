@@ -135,7 +135,6 @@ export function App() {
 				</div>
 				<TerminalPanel />
 			</main>
-
 			<AppFooter />
 		</AppShell>
 	);
