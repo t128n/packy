@@ -1,0 +1,53 @@
+<svg
+  width="160"
+  height="200"
+  viewBox="0 0 80 100"
+  fill="none"
+  xmlns="http://www.w3.org/2000/svg"
+>
+  <!-- Body -->
+  <rect x="12" y="18" width="56" height="68" rx="12" fill="#E03A3E" />
+
+  <!-- Top flap -->
+  <path d="M12 32 Q40 16 68 32 V40 H12 V32 Z" fill="#C72C30" />
+
+  <!-- Handle -->
+  <path
+    d="M28 16 Q40 8 52 16"
+    stroke="#C72C30"
+    stroke-width="4"
+    fill="none"
+    stroke-linecap="round"
+  />
+
+  <!-- Pocket -->
+  <rect x="20" y="56" width="40" height="22" rx="6" fill="#F04C50" />
+  <path d="M20 66 H60" stroke="#C72C30" stroke-width="1.5" opacity="0.6" />
+
+  <!-- Cute eyes (bigger, lower) -->
+  <circle cx="32" cy="50" r="4" fill="#181818" />
+  <circle cx="48" cy="50" r="4" fill="#181818" />
+  <!-- Eye highlights -->
+  <circle cx="30.8" cy="48.8" r="1.2" fill="#FFFFFF" opacity="0.9" />
+  <circle cx="46.8" cy="48.8" r="1.2" fill="#FFFFFF" opacity="0.9" />
+
+  <!-- Soft smile -->
+  <path
+    d="M34 56 Q40 59 46 56"
+    stroke="#7A1B1E"
+    stroke-width="2"
+    fill="none"
+    stroke-linecap="round"
+  />
+
+  <!-- Subtle depth -->
+  <rect
+    x="12"
+    y="18"
+    width="56"
+    height="68"
+    rx="12"
+    fill="black"
+    opacity="0.05"
+  />
+</svg>
