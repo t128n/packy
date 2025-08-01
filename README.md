@@ -39,26 +39,9 @@ browser—no backend required.
 
 No server is involved; data is processed in your browser via WebContainers.
 
-## Project Structure
-
-- App.tsx, main.tsx — App entry and mount
-- app-shell.tsx — Layout and panel wiring
-- components/ — Panels and UI primitives (bundle, downloads, logs)
-- lib/npm.ts — npm search, version/metadata, fetch helpers
-- hooks/ — Debounce, download, and related hooks
-- public/ — Static assets
-
 ## Getting Started
 
-1. Install dependencies:
-   ```sh
-   npm install
-   ```
-2. Start the dev server:
-   ```sh
-   npm run dev
-   ```
-3. Open http://localhost:5173
+You can try out packy at [🎒 t128n.github.io/packy/](https://t128n.github.io/packy/)
 
 ## Usage
 
@@ -70,7 +53,7 @@ No server is involved; data is processed in your browser via WebContainers.
 ## Notes
 
 - Large graphs can take time and memory; keep the tab focused during packing.
-- Private packages require appropriate access tokens (not stored server-side).
+- Private packages currently aren't supported
 
 ## Contributing
 
@@ -79,4 +62,4 @@ bundles.
 
 ## License
 
-MIT
+[MIT](LICENSE)
