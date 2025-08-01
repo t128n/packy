@@ -5,7 +5,7 @@ import { defineConfig } from "vite";
 
 // https://vite.dev/config/
 export default defineConfig({
-	base: "/t128n/packy/",
+	base: "/packy/",
 	plugins: [react(), tailwindcss()],
 	resolve: {
 		alias: {
