@@ -9,20 +9,6 @@ export function AppFooter() {
 				</div>
 
 				<div className="flex items-center gap-4">
-					<nav className="flex items-center gap-3">
-						<a href="/status" className="hover:underline">
-							Status
-						</a>
-						<a href="/privacy" className="hover:underline">
-							Privacy
-						</a>
-						<a href="/terms" className="hover:underline">
-							Terms
-						</a>
-					</nav>
-
-					<div className="hidden h-4 w-px bg-neutral-200 md:block" />
-
 					<div className="flex items-center gap-2">
 						<a
 							href="https://github.com/t128n/packy"
