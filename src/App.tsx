@@ -1,5 +1,4 @@
 import { useWebContainer } from "react-webcontainers";
-import PackySvg from "@/assets/packy.svg";
 import { AppFooter } from "@/components/app-footer";
 import { AppHeader } from "@/components/app-header";
 import { AppShell } from "@/components/app-shell";
