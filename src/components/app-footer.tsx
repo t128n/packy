@@ -25,7 +25,7 @@ export function AppFooter() {
 
 					<div className="flex items-center gap-2">
 						<a
-							href="https://github.com/your-org/packy"
+							href="https://github.com/t128n/packy"
 							target="_blank"
 							rel="noreferrer"
 							className="inline-flex items-center gap-1.5 hover:text-neutral-800"
@@ -35,7 +35,7 @@ export function AppFooter() {
 							<span className="sr-only">GitHub</span>
 						</a>
 						<a
-							href="https://twitter.com/t128n"
+							href="https://twitter.com/_t128n"
 							target="_blank"
 							rel="noreferrer"
 							className="inline-flex items-center gap-1.5 hover:text-neutral-800"
