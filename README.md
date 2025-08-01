@@ -1,44 +1,81 @@
-# 🎒 packy: Web-Based NPM Bundler
+# 🎒 packy: Offline NPM Bundle Builder
 
-Packy is a modern, browser-based npm bundler built with React, TypeScript, Vite and WebContainers. It empowers developers to bundle npm packages directly in the browser; no backend required. Packy provides a fast, intuitive UI for exploring, bundling, and downloading npm packages, making it ideal for rapid prototyping, education, and sharing code.
+Packy bundles an npm package and all of its dependencies into a single tarball
+for offline deployment. Choose a package and version, Packy resolves the full
+dependency tree, fetches the artifacts, and emits a self-contained archive you
+can ship to air‑gapped or restricted environments.
+
+Built with React, TypeScript, Vite, and WebContainers. Runs entirely in the
+browser—no backend required.
+
+## Why Packy
+
+- Prepare offline deployments (air‑gapped, CI without registry access).
+- Pin exact versions for reproducible installs.
+- Share a single file containing a full dependency set.
+
+## What You Get
+
+- One tarball containing:
+  - The selected package
+  - All transitive dependencies
+  - Metadata needed for offline installation
 
 ## Features
 
-- **Client-Side Bundling:** Bundle npm packages in the browser—no server, no install.
-- **Modern UI:** Built with reusable UI primitives for a consistent, accessible experience.
-- **Panel-Based Layout:** Modular panels for package bundling, downloads, and terminal output.
-- **Instant Downloads:** Download bundled packages as ready-to-use files.
-- **Debounced Actions:** Responsive UI with debounced input and download logic.
-- **No Global State:** State flows via React hooks and props for clarity and maintainability.
+- **Full dependency capture:** Resolves and includes all transitive deps.
+- **Version locking:** Pick any version or default to the latest.
+- **Client‑side operation:** Fetch, resolve, and pack in the browser.
+- **Instant download:** Get a single .tar/.tgz ready for transfer.
+- **Transparent logs:** View resolution and packing output.
+- **Modular UI:** Panel-based, reusable components.
 
 ## How It Works
 
-Packy leverages browser-based npm logic to fetch, bundle, and serve packages. All operations are performed client-side, ensuring privacy and speed. The app shell coordinates layout and panel registration, while each panel is self-contained and communicates via props.
+1. Search and select a package/version.
+2. Packy queries npm metadata, resolves the dependency graph, and fetches the
+   required tarballs.
+3. Everything is assembled into one archive for offline use.
+
+No server is involved; data is processed in your browser via WebContainers.
 
 ## Project Structure
 
-- App.tsx, main.tsx: App entry and mounting
-- app-shell.tsx: Layout and panel registration
-- components: Panels and UI primitives
-- npm.ts: Core npm/package logic
-- hooks: Custom hooks for debouncing and downloads
-- public: Static assets
+- App.tsx, main.tsx — App entry and mount
+- app-shell.tsx — Layout and panel wiring
+- components/ — Panels and UI primitives (bundle, downloads, logs)
+- lib/npm.ts — npm search, version/metadata, fetch helpers
+- hooks/ — Debounce, download, and related hooks
+- public/ — Static assets
 
 ## Getting Started
 
-1. **Install dependencies:**
+1. Install dependencies:
    ```sh
    npm install
    ```
-2. **Start the development server:**
+2. Start the dev server:
    ```sh
    npm run dev
    ```
-3. **Open [http://localhost:5173](http://localhost:5173) in your browser.**
+3. Open http://localhost:5173
+
+## Usage
+
+1. Search for a package.
+2. Select a version (defaults to latest).
+3. Click “Bundle” to create the offline tarball.
+4. Download and transfer the archive to the target environment.
+
+## Notes
+
+- Large graphs can take time and memory; keep the tab focused during packing.
+- Private packages require appropriate access tokens (not stored server-side).
 
 ## Contributing
 
-Contributions are welcome! Please follow the established component and panel structure, reuse UI primitives, and keep all logic client-side.
+PRs welcome. Aim for client‑side logic, clear composition, and reproducible
+bundles.
 
 ## License
 
