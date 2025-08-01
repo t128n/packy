@@ -1,5 +1,6 @@
 import { SiGithub } from "@icons-pack/react-simple-icons";
 import { BookTextIcon } from "lucide-react";
+import { SwBadge } from "@/components/sw-badge";
 import { Button } from "@/components/ui/button";
 
 export function AppHeader() {
@@ -15,7 +16,10 @@ export function AppHeader() {
 					</div>
 
 					<div className="flex flex-col">
-						<h1 className="text-lg font-semibold leading-tight">packy</h1>
+						<div className="flex items-center gap-2">
+							<h1 className="text-lg font-semibold leading-tight">packy</h1>
+							<SwBadge />
+						</div>
 						<p className="text-xs text-neutral-500">web npm package bundler</p>
 					</div>
 				</div>
