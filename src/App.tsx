@@ -6,6 +6,7 @@ import { AppShell } from "@/components/app-shell";
 import { DownloadPanel } from "@/components/download-panel";
 import { PackageBundlePanel } from "@/components/package-bundle-panel";
 import { TerminalPanel } from "@/components/terminal-panel";
+import { WebcontainerUnsupportedAlert } from "@/components/webcontainer-unsupported-alert";
 import { useDownloads } from "@/hooks/use-downloads";
 import { parseTarballName } from "@/lib/npm";
 import { useTerminal } from "@/lib/terminal";
@@ -129,6 +130,7 @@ export function App() {
 		<AppShell>
 			<AppHeader />
 			<main className="mx-auto grid w-full max-w-7xl grid-cols-1 gap-6 p-4 md:grid-cols-[320px_1fr]">
+				<WebcontainerUnsupportedAlert wc={wc} />
 				<div className="flex flex-col gap-6">
 					<PackageBundlePanel onBundle={handleBundle} allowVersionSelection />
 					<DownloadPanel />
