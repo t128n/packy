@@ -35,7 +35,7 @@ export function AppHeader() {
 
 					<Button asChild size="sm">
 						<a
-							href="https://github.com/t128n/packy"
+							href="https://github.com/t128n/packy/tree/main/docs"
 							target="_blank"
 							rel="noreferrer"
 							className="inline-flex items-center gap-2"
