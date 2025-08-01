@@ -1,5 +1,6 @@
+import { Download as DownloadIcon, Trash2 as TrashIcon } from "lucide-react";
 import { useDownloads } from "@/hooks/use-downloads";
-import { formatBytes, safeDownloadName, shortHash } from "@/lib/downloads";
+import { formatBytes, safeDownloadName } from "@/lib/downloads";
 
 type DownloadPanelProps = {
 	className?: string;
@@ -16,17 +17,17 @@ export function DownloadPanel({
 		<aside
 			className={
 				className ??
-				"sticky top-[4.25rem] h-fit space-y-3 rounded-lg border border-neutral-200 bg-white p-4"
+				"sticky top-[4.25rem] h-fit space-y-3 rounded-xl border border-neutral-200 bg-white p-4"
 			}
+			aria-label={title}
 		>
 			<div className="flex items-center justify-between">
-				<h2 className="text-sm font-semibold text-neutral-700">{title}</h2>
+				<h2 className="text-sm font-semibold text-neutral-900">{title}</h2>
 				<button
 					type="button"
-					className="text-xs text-neutral-500 hover:text-neutral-800"
 					onClick={clearDownloads}
 					disabled={items.length === 0}
-					title="Clear all"
+					className="rounded px-2 py-1 text-xs text-neutral-600 hover:bg-neutral-50 disabled:opacity-40"
 				>
 					Clear all
 				</button>
@@ -39,60 +40,37 @@ export function DownloadPanel({
 					{items.map((it) => (
 						<li
 							key={it.id}
-							className="rounded-md border border-neutral-200 p-3"
+							className="rounded-lg border border-neutral-200 p-3 hover:bg-neutral-50"
 						>
-							<div className="flex items-center justify-between gap-3">
-								<div className="min-w-0">
-									<div className="truncate text-sm font-medium text-neutral-800">
-										{it.name}
-									</div>
-									<div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-neutral-500">
-										<span>{formatBytes(it.size)}</span>
-										<span>•</span>
-										<span>
-											{new Date(it.createdAt).toLocaleString(undefined, {
-												hour12: false,
-											})}
-										</span>
-										{it.integrity ? (
-											<>
-												<span>•</span>
-												<span title={it.integrity}>
-													sha512 {shortHash(it.integrity)}
-												</span>
-											</>
-										) : null}
-										{it.meta
-											? Object.entries(it.meta)
-													.filter(([, v]) => v !== undefined && v !== null)
-													.slice(0, 3)
-													.map(([k, v]) => (
-														<span key={k} className="truncate">
-															• {k}: {String(v)}
-														</span>
-													))
-											: null}
-									</div>
+							<div className="min-w-0">
+								<div className="truncate text-sm font-medium text-neutral-900">
+									{it.name}
 								</div>
+								<div className="mt-0.5 text-[11px] text-neutral-600">
+									({formatBytes(it.size)})
+								</div>
+							</div>
 
-								<div className="flex shrink-0 items-center gap-2">
-									<a
-										href={it.url}
-										download={safeDownloadName(it.name)}
-										className="rounded-md border border-neutral-300 px-2 py-1 text-xs hover:bg-neutral-50"
-										title="Download"
-									>
-										Download
-									</a>
-									<button
-										type="button"
-										className="rounded-md border border-neutral-300 px-2 py-1 text-xs text-red-600 hover:bg-red-50"
-										onClick={() => removeDownload(it.id)}
-										title="Remove"
-									>
-										Remove
-									</button>
-								</div>
+							<div className="mt-2 flex items-center gap-2">
+								<a
+									href={it.url}
+									download={safeDownloadName(it.name)}
+									className="inline-flex items-center gap-1 rounded-md bg-neutral-900 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-neutral-800"
+								>
+									<DownloadIcon size={14} />
+									Download
+								</a>
+
+								<button
+									type="button"
+									onClick={() => removeDownload(it.id)}
+									className="inline-flex items-center gap-1 rounded-md border border-neutral-300 px-2.5 py-1.5 text-xs text-neutral-700 hover:bg-red-50 hover:text-red-700"
+									aria-label={`Delete ${it.name}`}
+									title="Delete"
+								>
+									<TrashIcon size={14} />
+									Delete
+								</button>
 							</div>
 						</li>
 					))}
