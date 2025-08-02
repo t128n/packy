@@ -23,6 +23,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Set VITE_COMMIT_SHA
+        run: echo "VITE_COMMIT_SHA=$(git rev-parse HEAD)" >> $GITHUB_ENV
       - name: Set up Bun
         uses: oven-sh/setup-bun@v1
         with:

@@ -18,4 +18,8 @@ export default defineConfig({
 			"Cross-Origin-Opener-Policy": "same-origin",
 		},
 	},
+	// Inject the current git commit SHA at build time so the app can link to it
+	define: {
+		__COMMIT_SHA__: JSON.stringify(process.env.VITE_COMMIT_SHA || process.env.COMMIT_SHA || "dev"),
+	},
 });

@@ -10,7 +10,8 @@
     "lint": "bunx biome check src vite.config.ts",
     "format": "bunx biome format src vite.config.ts --write",
     "fix": "bunx biome check src vite.config.ts --apply",
-    "check": "bunx biome check src vite.config.ts && bunx biome format src vite.config.ts --check"
+    "check": "bunx biome check src vite.config.ts && bunx biome format src vite.config.ts --check",
+    "dev:sha": "VITE_COMMIT_SHA=$(git rev-parse HEAD) bun run dev"
   },
   "dependencies": {
     "@icons-pack/react-simple-icons": "^13.7.0",
