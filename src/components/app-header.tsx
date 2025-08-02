@@ -20,7 +20,9 @@ export function AppHeader() {
 							<h1 className="text-lg font-semibold leading-tight">packy</h1>
 							<SwBadge />
 						</div>
-						<p className="text-xs text-muted-foreground">web npm package bundler</p>
+						<p className="text-xs text-muted-foreground">
+							web npm package bundler
+						</p>
 					</div>
 				</div>
 

@@ -2,6 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "./main.css";
 import WebContainerProvider from "react-webcontainers";
+import { Toaster } from "@/components/ui/sonner";
 import { DownloadProvider } from "@/lib/downloads";
 import { TerminalProvider } from "@/lib/terminal";
 import { App } from "./App";
@@ -64,6 +65,7 @@ function renderApp(): void {
 			<WebContainerProvider>
 				<DownloadProvider>
 					<TerminalProvider>
+						<Toaster richColors position="bottom-right" />
 						<App />
 					</TerminalProvider>
 				</DownloadProvider>
