@@ -19,6 +19,12 @@ export function SwBadge() {
 
 	const { label, variant } = map[status];
 
+  if (status === "active") {
+			setTimeout(() => {
+				window.location.reload();
+			}, 1000);
+  }
+
 	return (
 		<Badge
 			variant={variant ?? "default"}
