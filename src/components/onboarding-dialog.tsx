@@ -53,7 +53,7 @@ const steps = [
 		id: "tips",
 		title: "Tips",
 		description:
-			"Large graphs can take time. Keep the tab focused. Private packages aren’t supported.",
+			"Large graphs can take time. Keep the tab focused. Private packages aren't supported. You can deep-link to start a bundle via ?pkg=name or ?pkg=name@version (version optional; defaults to latest).",
 		icon: InfoIcon,
 	},
 ] as const;

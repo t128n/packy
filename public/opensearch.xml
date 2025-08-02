@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OpenSearchDescription xmlns="http://a9.com/-/spec/opensearch/1.1/">
+  <ShortName>Packy</ShortName>
+  <Description>Packy — Web NPM Bundler. Bundle npm packages directly in your browser. Use queries
+    like react or react@18.2.0.</Description>
+  <Tags>npm bundler web bundler browser bundler javascript typescript vite react</Tags>
+  <Contact>_t128n</Contact>
+  <InputEncoding>UTF-8</InputEncoding>
+  <OutputEncoding>UTF-8</OutputEncoding>
+  <Developer>Torben Haack</Developer>
+  <Attribution>Packy by Torben Haack. No backend. Fast, simple, privacy-friendly.</Attribution>
+  <Language>en</Language>
+  <Url type="text/html" method="get" template="https://t128n.github.io/packy/">
+    <Param name="pkg" value="{searchTerms}" />
+  </Url>
+  <Image height="16" width="16" type="image/svg+xml">https://t128n.github.io/packy/packy.svg</Image>
+  <Image height="64" width="64" type="image/svg+xml">https://t128n.github.io/packy/packy.svg</Image>
+
+  <LongName>Packy — Web NPM Bundler | Bundle npm packages in your browser</LongName>
+  <AdultContent>false</AdultContent>
+
+  <Query role="example" searchTerms="react" />
+  <Query role="example" searchTerms="react@18.2.0" />
+</OpenSearchDescription>
