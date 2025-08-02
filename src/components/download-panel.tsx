@@ -55,7 +55,7 @@ export function DownloadPanel({
 								<a
 									href={it.url}
 									download={safeDownloadName(it.name)}
-									className="inline-flex items-center gap-1 rounded-md bg-foreground px-2.5 py-1.5 text-xs font-medium text-background hover:opacity-90"
+									className="inline-flex items-center gap-1 rounded-md bg-primary px-2.5 py-1.5 text-xs font-medium text-background hover:opacity-90"
 								>
 									<DownloadIcon size={14} />
 									Download
