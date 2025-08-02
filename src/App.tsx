@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useWebContainer } from "react-webcontainers";
+import { toast } from "sonner";
 import { AppFooter } from "@/components/app-footer";
 import { AppHeader } from "@/components/app-header";
 import { AppShell } from "@/components/app-shell";
@@ -51,12 +52,9 @@ export function App() {
 		if (!urlPkg) return;
 		if (!wc) return;
 		autoTriggered.current = true;
-		import("sonner").then(({ toast }) =>
-			toast.message(`Auto bundling ${urlPkg.name}@${urlPkg.version}…`, {
-				description:
-					"Loaded from URL parameter. Watch the panels for progress.",
-			}),
-		);
+		toast.message(`Auto bundling ${urlPkg.name}@${urlPkg.version}…`, {
+			description: "Loaded from URL parameter. Watch the panels for progress.",
+		});
 		bundle({ name: urlPkg.name, version: urlPkg.version });
 	}, [wc, bundle, urlPkg]);
 
@@ -65,25 +63,19 @@ export function App() {
 		const last = stages[stages.length - 1];
 		if (!last) return;
 		if (last.status === "active") {
-			import("sonner").then(({ toast }) =>
-				toast.message("Bundling in progress…", {
-					description: "Watch the Timeline and Terminal panels for updates.",
-				}),
-			);
+			toast.message("Bundling in progress…", {
+				description: "Watch the Timeline and Terminal panels for updates.",
+			});
 		}
 		if (last.status === "done") {
-			import("sonner").then(({ toast }) =>
-				toast.success("Bundle ready", {
-					description: "Open the Downloads panel to save your archive.",
-				}),
-			);
+			toast.success("Bundle ready", {
+				description: "Open the Downloads panel to save your archive.",
+			});
 		}
 		if (last.status === "error") {
-			import("sonner").then(({ toast }) =>
-				toast.error("Bundling failed", {
-					description: "Check the Terminal for details and try again.",
-				}),
-			);
+			toast.error("Bundling failed", {
+				description: "Check the Terminal for details and try again.",
+			});
 		}
 	}, [stages]);
 
