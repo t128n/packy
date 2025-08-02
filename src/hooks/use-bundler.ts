@@ -4,7 +4,6 @@ import { useProcessTimeline } from "@/hooks/use-process";
 import { parseTarballName } from "@/lib/npm";
 import { spawnCollect } from "@/lib/spawn-collect";
 import { useTerminal } from "@/lib/terminal";
-import { now } from "@/lib/utils";
 
 type Pkg = { name: string; version: string };
 
@@ -49,18 +48,16 @@ export function useBundler() {
 			if (initRes.code !== 0) {
 				process.fail("setup", "npm init failed");
 				terminal.error(
-					`[${now()}] Failed to initialize project (npm init). Code: ${initRes.code}`,
+					`Failed to initialize project (npm init). Code: ${initRes.code}`,
 				);
 				if (initRes.stderr) terminal.error(initRes.stderr.trim());
 				return;
 			}
-			terminal.log(`[${now()}] Set up environment for run ${runId}`);
+			terminal.log(`Set up environment for run ${runId}`);
 			process.succeed("setup");
 
 			process.start("install");
-			terminal.log(
-				`[${now()}] Installing ${pkg.name}@${pkg.version} with dependencies...`,
-			);
+			terminal.log(`Installing ${pkg.name}@${pkg.version} with dependencies...`);
 
 			const installRes = await spawnCollect({
 				wc,
@@ -81,9 +78,7 @@ export function useBundler() {
 
 			if (installRes.code !== 0) {
 				process.fail("install", "npm install failed");
-				terminal.error(
-					`[${now()}] npm install failed with code ${installRes.code}.`,
-				);
+				terminal.error(`npm install failed with code ${installRes.code}.`);
 				if (installRes.stderr) terminal.error(installRes.stderr.trim());
 				terminal.log(
 					"Hint: lifecycle scripts may require tools not present in the sandbox.",
@@ -91,9 +86,7 @@ export function useBundler() {
 				return;
 			}
 			process.succeed("install");
-			terminal.log(
-				`[${now()}] Successfully installed ${pkg.name}@${pkg.version}`,
-			);
+			terminal.log(`Successfully installed ${pkg.name}@${pkg.version}`);
 
 			process.start("patch");
 			const pkgDir = `${baseDir}/node_modules/${pkg.name}`;
@@ -119,17 +112,13 @@ export function useBundler() {
 				process.succeed("patch");
 			} catch (e: unknown) {
 				process.fail("patch", "Failed to patch package.json");
-				terminal.error(
-					`[${now()}] Failed to read or patch package.json for ${pkg.name}.`,
-				);
+				terminal.error(`Failed to read or patch package.json for ${pkg.name}.`);
 				terminal.error(String((e as Error)?.message ?? e));
 				return;
 			}
 
 			process.start("pack");
-			terminal.log(
-				`[${now()}] Creating tarball for ${pkg.name}@${pkg.version}...`,
-			);
+			terminal.log(`Creating tarball for ${pkg.name}@${pkg.version}...`);
 
 			const packRes = await spawnCollect({
 				wc,
@@ -147,7 +136,7 @@ export function useBundler() {
 
 			if (packRes.code !== 0) {
 				process.fail("pack", "npm pack failed");
-				terminal.error(`[${now()}] npm pack failed with code ${packRes.code}.`);
+				terminal.error(`npm pack failed with code ${packRes.code}.`);
 				const combined = `${packRes.stdout}\n${packRes.stderr}`.trim();
 				if (combined) terminal.error(combined);
 				return;
@@ -156,14 +145,13 @@ export function useBundler() {
 			const tarballName = parseTarballName(packRes.stdout);
 			if (!tarballName) {
 				process.fail("pack", "Could not parse tarball name");
-				terminal.error(
-					`[${now()}] Could not determine tarball filename from npm pack output.`,
-				);
+				terminal.error(`Could not determine tarball filename from npm pack output.`);
 				return;
 			}
 
 			const tarballPath = `${pkgDir}/${tarballName}`;
-			terminal.log(`[${now()}] Tarball created: ${tarballPath}`);
+			terminal.log(`Tarball created: ${tarballPath}`);
+			terminal.log("Your download will be available for 60 seconds.");
 
 			const data = await wc.fs.readFile(tarballPath);
 			const blob = new Blob([data], { type: "application/gzip" });
@@ -184,9 +172,7 @@ export function useBundler() {
 			setTimeout(() => {
 				URL.revokeObjectURL(tarballUrl);
 				removeDownload(download);
-				terminal.log(
-					`[${now()}] Tarball URL ${tarballUrl} revoked after 60 seconds`,
-				);
+				terminal.log(`Tarball URL ${tarballUrl} revoked after 60 seconds`);
 			}, 60_000);
 
 			process.succeed("pack", tarballName);
@@ -194,9 +180,7 @@ export function useBundler() {
 			process.succeed("done");
 		} catch (e: unknown) {
 			process.fail("pack", String((e as Error)?.message ?? e));
-			terminal.error(
-				`[${now()}] Unexpected error: ${String((e as Error)?.message ?? e)}`,
-			);
+			terminal.error(`Unexpected error: ${String((e as Error)?.message ?? e)}`);
 		}
 	}
 

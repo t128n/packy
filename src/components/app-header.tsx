@@ -5,11 +5,11 @@ import { Button } from "@/components/ui/button";
 
 export function AppHeader() {
 	return (
-		<header className="sticky top-0 z-10 border-b border-neutral-200 bg-white/90 backdrop-blur">
+		<header className="sticky top-0 z-10 border-b border-border bg-background/90 backdrop-blur">
 			<div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3">
 				<div className="flex items-center gap-3">
 					<div
-						className="flex h-8 w-8 items-center justify-center rounded bg-red-100"
+						className="flex h-8 w-8 items-center justify-center rounded bg-muted"
 						aria-hidden="true"
 					>
 						🎒
@@ -20,7 +20,7 @@ export function AppHeader() {
 							<h1 className="text-lg font-semibold leading-tight">packy</h1>
 							<SwBadge />
 						</div>
-						<p className="text-xs text-neutral-500">web npm package bundler</p>
+						<p className="text-xs text-muted-foreground">web npm package bundler</p>
 					</div>
 				</div>
 

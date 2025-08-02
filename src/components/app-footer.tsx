@@ -7,20 +7,20 @@ export function AppFooter() {
 	const commitUrl = shortSha ? `https://github.com/t128n/packy/commit/${sha}` : "https://github.com/t128n/packy";
 
 	return (
-		<footer className="border-t border-neutral-200 bg-white">
-			<div className="mx-auto flex w-full max-w-7xl flex-col gap-3 px-4 py-3 text-xs text-neutral-600 md:flex-row md:items-center md:justify-between">
+		<footer className="border-t border-border bg-background">
+			<div className="mx-auto flex w-full max-w-7xl flex-col gap-3 px-4 py-3 text-xs text-muted-foreground md:flex-row md:items-center md:justify-between">
 				<div className="flex items-center gap-2">
 					<span>© {new Date().getFullYear()} Torben Haack</span>
-					<span className="text-neutral-400">[t128n]</span>
+					<span className="text-muted-foreground/70">[t128n]</span>
 					{shortSha && (
 						<a
 							href={commitUrl}
 							target="_blank"
 							rel="noreferrer"
-							className="inline-flex items-center gap-1.5 hover:text-neutral-800"
+							className="inline-flex items-center gap-1.5 hover:text-foreground"
 							aria-label={`Deployed commit ${shortSha}`}
 						>
-							<span className="text-neutral-400">•</span>
+							<span className="text-muted-foreground/70">•</span>
 							<span className="font-mono">{shortSha}</span>
 						</a>
 					)}
@@ -32,7 +32,7 @@ export function AppFooter() {
 							href="https://github.com/t128n/packy"
 							target="_blank"
 							rel="noreferrer"
-							className="inline-flex items-center gap-1.5 hover:text-neutral-800"
+							className="inline-flex items-center gap-1.5 hover:text-foreground"
 							aria-label="GitHub repository"
 						>
 							<SiGithub className="h-3.5 w-3.5" aria-hidden="true" />
@@ -42,7 +42,7 @@ export function AppFooter() {
 							href="https://twitter.com/_t128n"
 							target="_blank"
 							rel="noreferrer"
-							className="inline-flex items-center gap-1.5 hover:text-neutral-800"
+							className="inline-flex items-center gap-1.5 hover:text-foreground"
 							aria-label="Twitter profile"
 						>
 							<SiX className="h-3.5 w-3.5" aria-hidden="true" />

@@ -22,10 +22,10 @@ export function TerminalPanel() {
 	}, [entries]);
 
 	return (
-		<section className="flex min-h-[60vh] flex-col overflow-hidden rounded-lg border border-neutral-200 bg-white">
-			<div className="flex items-center justify-between border-b border-neutral-200 px-4 py-2">
-				<h2 className="text-sm font-semibold text-neutral-700">Output</h2>
-				<div className="text-xs text-neutral-500">console</div>
+		<section className="flex min-h-[60vh] flex-col overflow-hidden rounded-lg border border-border bg-card text-card-foreground">
+			<div className="flex items-center justify-between border-b border-border px-4 py-2">
+				<h2 className="text-sm font-semibold text-foreground">Output</h2>
+				<div className="text-xs text-muted-foreground">console</div>
 			</div>
 
 			<div
@@ -36,8 +36,8 @@ export function TerminalPanel() {
 					className={cn(
 						"whitespace-pre-wrap break-words text-sm leading-relaxed ",
 						{
-							"text-neutral-800": entries.length > 0,
-							"text-neutral-500": entries.length === 0,
+							"text-foreground": entries.length > 0,
+							"text-muted-foreground": entries.length === 0,
 						},
 					)}
 				>

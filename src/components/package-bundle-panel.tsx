@@ -98,8 +98,8 @@ export function PackageBundlePanel({
 	}, [allowVersionSelection, selectedPkg?.version, selectedVersion]);
 
 	return (
-		<aside className="sticky top-[4.25rem] h-fit space-y-4 rounded-lg border border-neutral-200 bg-white p-4">
-			<h2 className="text-sm font-semibold text-neutral-700">Bundle Package</h2>
+		<aside className="sticky top-[4.25rem] h-fit space-y-4 rounded-lg border border-border bg-card p-4">
+			<h2 className="text-sm font-semibold text-foreground">Bundle Package</h2>
 
 			<div className="space-y-3">
 				<Combobox<NpmPkg>
