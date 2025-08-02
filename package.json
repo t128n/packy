@@ -11,7 +11,10 @@
     "format": "bunx biome format src vite.config.ts --write",
     "fix": "bunx biome check src vite.config.ts --apply",
     "check": "bunx biome check src vite.config.ts && bunx biome format src vite.config.ts --check",
-    "dev:sha": "VITE_COMMIT_SHA=$(git rev-parse HEAD) bun run dev"
+    "dev:sha": "VITE_COMMIT_SHA=$(git rev-parse HEAD) bun run dev",
+    "changeset": "bunx changeset",
+    "version": "bunx changeset version && bun run format",
+    "prepare": "husky"
   },
   "dependencies": {
     "@icons-pack/react-simple-icons": "^13.7.0",
@@ -39,10 +42,14 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.1.3",
+    "@changesets/cli": "^2.29.5",
+    "@commitlint/cli": "^19.8.1",
+    "@commitlint/config-conventional": "^19.8.1",
     "@types/node": "^24.1.0",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
     "@vitejs/plugin-react-swc": "^3.10.2",
+    "husky": "^9.1.7",
     "tw-animate-css": "^1.3.6",
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.35.1",
