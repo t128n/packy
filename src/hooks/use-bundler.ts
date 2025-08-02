@@ -10,12 +10,25 @@ type Pkg = { name: string; version: string };
 export function useBundler() {
 	const wc = useWebContainer();
 	const terminal = useTerminal();
-	const { addDownload } = useDownloads();
+	const { addDownload, items } = useDownloads();
 	const process = useProcessTimeline();
 
 	async function bundle(pkg: Pkg) {
 		terminal.clear();
 		process.reset();
+
+		// Skip if a download for the same package@version already exists
+		const existing = items.find(
+			(d) => d.meta?.package === pkg.name && d.meta?.version === pkg.version,
+		);
+		if (existing) {
+			terminal.log(
+				`A download for ${pkg.name}@${pkg.version} already exists: ${existing.name}. Skipping bundle.`,
+			);
+			process.start("done");
+			process.succeed("done");
+			return;
+		}
 
 		if (!wc) {
 			terminal.error(
