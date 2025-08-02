@@ -93,21 +93,75 @@ export function useBundler() {
 			process.succeed("install");
 			terminal.log(`Installed ${pkg.name}@${pkg.version} successfully.`);
 
-			// Nerd info: count installed dependencies
+			// Nerd info: count installed dependencies + extra details
 			try {
+				// Node/npm versions inside the container
+				const [nodeV, npmV] = await Promise.all([
+					spawnCollect({ wc, cmd: "node", args: ["-v"], cwd: baseDir }),
+					spawnCollect({ wc, cmd: "npm", args: ["-v"], cwd: baseDir }),
+				]);
+				const nodeVer = nodeV.stdout.trim();
+				const npmVer = npmV.stdout.trim();
+				if (nodeVer || npmVer) {
+					terminal.log(`Env: node ${nodeVer || "?"}, npm ${npmVer || "?"}`);
+				}
+
 				const lockRaw = await wc.fs.readFile(`${baseDir}/package-lock.json`);
 				const lock = JSON.parse(new TextDecoder().decode(lockRaw));
-				let depCount = 0;
+
+				// Total installed package entries
+				let totalPackages = 0;
 				if (lock.packages) {
-					// packages keys include "" (root) and "node_modules/<name>"
-					depCount = Object.keys(lock.packages).filter((k) =>
-						k.startsWith("node_modules/"),
+					totalPackages = Object.keys(lock.packages).filter((k) =>
+						k === "" ? false : k.startsWith("node_modules/"),
 					).length;
 				} else if (lock.dependencies) {
-					depCount = Object.keys(lock.dependencies).length;
+					totalPackages = Object.keys(lock.dependencies).length;
 				}
+
+				// Direct dependency count for the installed package (approx from its package.json)
+				let directDeps = 0;
+				try {
+					const pkgJsonRaw = await wc.fs.readFile(
+						`${baseDir}/node_modules/${pkg.name}/package.json`,
+					);
+					const pkgJsonObj = JSON.parse(new TextDecoder().decode(pkgJsonRaw));
+					directDeps = Object.keys(pkgJsonObj.dependencies ?? {}).length;
+				} catch {
+					// ignore
+				}
+
+				// Estimate maximum nesting depth from lockfile package keys
+				let maxDepth = 1;
+				if (lock.packages) {
+					for (const key of Object.keys(lock.packages)) {
+						if (!key.startsWith("node_modules/")) continue;
+						const segs = key.split("node_modules/").filter(Boolean);
+						maxDepth = Math.max(maxDepth, segs.length);
+					}
+				}
+
+				// Rough deduped size estimate by summing unique resolved versions
+				let uniqueCount = 0;
+				if (lock.packages) {
+					const seen = new Set<string>();
+					type PkgEntry = { version?: string };
+					const entries = Object.entries(lock.packages) as Array<
+						[string, PkgEntry | undefined]
+					>;
+					for (const [k, v] of entries) {
+						if (!k || !k.startsWith("node_modules/")) continue;
+						const name = k
+							.replace(/^node_modules\//, "")
+							.split("/node_modules/")[0];
+						const version = v?.version ?? "";
+						if (name && version) seen.add(`${name}@${version}`);
+					}
+					uniqueCount = seen.size;
+				}
+
 				terminal.log(
-					`Dependencies installed: ${depCount.toLocaleString()} packages.`,
+					`Dependencies installed: ${totalPackages.toLocaleString()} packages (direct: ${directDeps}, unique versions: ${uniqueCount || "n/a"}, max depth: ${maxDepth}).`,
 				);
 			} catch {
 				// best-effort; ignore if lockfile missing
