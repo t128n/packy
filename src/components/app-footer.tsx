@@ -12,6 +12,15 @@ export function AppFooter() {
 				<div className="flex items-center gap-2">
 					<span>© {new Date().getFullYear()} Torben Haack</span>
 					<span className="text-muted-foreground/70">[t128n]</span>
+					<a
+						href="https://t128.github.io"
+						target="_blank"
+						rel="noreferrer"
+						className="hover:text-foreground"
+						aria-label="t128.github.io"
+					>
+						t128.github.io
+					</a>
 					{shortSha && (
 						<a
 							href={commitUrl}
