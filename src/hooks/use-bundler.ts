@@ -10,7 +10,7 @@ type Pkg = { name: string; version: string };
 export function useBundler() {
 	const wc = useWebContainer();
 	const terminal = useTerminal();
-	const { addDownload, removeDownload } = useDownloads();
+	const { addDownload } = useDownloads();
 	const process = useProcessTimeline();
 
 	async function bundle(pkg: Pkg) {
@@ -187,34 +187,25 @@ export function useBundler() {
 
 			const tarballPath = `${pkgDir}/${tarballName}`;
 			terminal.log(`Tarball created at: ${tarballPath}`);
-			terminal.log("Your download link will be valid for 60 seconds.");
+			terminal.log("Saved to your Downloads panel with 7-day retention.");
 
 			const data = await wc.fs.readFile(tarballPath);
 			const blob = new Blob([data], { type: "application/gzip" });
-			const tarballUrl = URL.createObjectURL(blob);
 
-			const download = addDownload({
+			const created = addDownload({
 				name: tarballName,
-				url: tarballUrl,
-				size: blob.size,
+				blob,
 				integrity: null,
 				meta: {
 					package: pkg.name,
 					version: pkg.version,
-					expires: Date.now() + 60_000,
 				},
 			});
 
 			const sizeKb = Math.max(1, Math.round(blob.size / 1024));
 			terminal.log(
-				`Download ready: ${tarballName} (${sizeKb} KB). Click the download entry above to save.`,
+				`Download ready: ${created.name} (${sizeKb} KB). It will be retained for 7 days.`,
 			);
-
-			setTimeout(() => {
-				URL.revokeObjectURL(tarballUrl);
-				removeDownload(download);
-				terminal.log("Download link expired and has been revoked.");
-			}, 60_000);
 
 			process.succeed("pack", tarballName);
 			process.start("done");
