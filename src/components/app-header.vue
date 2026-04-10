@@ -21,12 +21,26 @@ const logoSrc = computed(() => {
 	return "/packy_sleep.svg";
 });
 
-onMounted(() => {
-	if (!crossOriginIsolated) {
-		console.error(
-			"WebContainers require cross-origin isolation. Restart the Vite server with COOP/COEP headers enabled.",
-		);
-		return;
+const hasWebcontainerError = computed(() => Boolean(webcontainer.error.value));
+
+const webcontainerErrorMessage = computed(() => {
+	const error = webcontainer.error.value;
+	if (error instanceof Error) {
+		return error.message;
+	}
+
+	return error ? String(error) : "";
+});
+
+	onMounted(() => {
+		if (!crossOriginIsolated) {
+			webcontainer.error.value = new Error(
+				"Cross-origin isolation is required to start WebContainers.",
+			);
+			console.error(
+				"WebContainers require cross-origin isolation. Restart the Vite server with COOP/COEP headers enabled.",
+			);
+			return;
 	}
 
 	void webcontainer.init();
@@ -47,5 +61,23 @@ onMounted(() => {
 			</div>
 		</template>
 	</UHeader>
+	<UModal
+		v-if="hasWebcontainerError"
+		:open="true"
+		:dismissible="false"
+		:modal="true"
+		title="WebContainers unavailable"
+		description="packy needs a cross-origin isolated browser environment to run WebContainers."
+		:close="false"
+	>
+		<template #body>
+			<p class="text-sm text-muted">
+				{{ webcontainerErrorMessage || "Unable to start the in-browser runtime." }}
+			</p>
+			<p class="text-sm text-muted mt-3">
+				Open this site from a deployment that sends COOP and COEP headers, or let the service worker reload the page once it has been registered.
+			</p>
+		</template>
+	</UModal>
 	<HeroBackground />
 </template>

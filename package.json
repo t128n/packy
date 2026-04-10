@@ -5,7 +5,8 @@
 	"type": "module",
 	"scripts": {
 		"dev": "vite",
-		"build": "vue-tsc -b && vite build",
+		"prepare:coi": "bun run scripts/copy-coi-serviceworker.ts",
+		"build": "bun run prepare:coi && vue-tsc -b && vite build",
 		"update": "taze",
 		"preview": "vite preview",
 		"fmt": "oxfmt .",
@@ -21,6 +22,7 @@
 		"@iconify-json/simple-icons": "^1.2.77",
 		"@nuxt/ui": "^4.6.1",
 		"@webcontainer/api": "^1.6.1",
+		"coi-serviceworker": "^0.1.7",
 		"ofetch": "^1.5.1",
 		"tailwindcss": "^4.2.2",
 		"vue": "^3.5.32"
