@@ -1,0 +1,33 @@
+name: Feature request
+description: Suggest an improvement or new feature.
+title: "feature: "
+labels:
+    - enhancement
+body:
+    - type: markdown
+      attributes:
+          value: |
+              Thanks for sharing an idea for packy.
+    - type: textarea
+      id: problem
+      attributes:
+          label: Problem statement
+          description: What problem are you trying to solve?
+          placeholder: Describe the user need or limitation.
+      validations:
+          required: true
+    - type: textarea
+      id: proposal
+      attributes:
+          label: Proposed solution
+          description: Describe the change you would like to see.
+          placeholder: Explain the feature and how it should work.
+      validations:
+          required: true
+    - type: textarea
+      id: alternatives
+      attributes:
+          label: Alternatives considered
+          description: What other approaches have you thought about?
+      validations:
+          required: false

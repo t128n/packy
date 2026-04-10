@@ -1,0 +1,42 @@
+{
+	"name": "packy",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"dev": "vite",
+		"build": "vue-tsc -b && vite build",
+		"update": "taze",
+		"preview": "vite preview",
+		"fmt": "oxfmt .",
+		"lint:fix": "oxlint . --fix",
+		"test": "bun run --parallel \"test:*\"",
+		"test:fmt": "oxfmt . --check",
+		"test:lint": "oxlint .",
+		"test:knip": "knip",
+		"test:typecheck": "vue-tsc --noEmit"
+	},
+	"dependencies": {
+		"@iconify-json/lucide": "^1.2.102",
+		"@iconify-json/simple-icons": "^1.2.77",
+		"@nuxt/ui": "^4.6.1",
+		"@webcontainer/api": "^1.6.1",
+		"ofetch": "^1.5.1",
+		"tailwindcss": "^4.2.2",
+		"vue": "^3.5.32"
+	},
+	"devDependencies": {
+		"@e18e/eslint-plugin": "^0.3.0",
+		"@types/node": "^25.6.0",
+		"@vitejs/plugin-vue": "^6.0.5",
+		"@vue/tsconfig": "^0.9.1",
+		"knip": "^6.3.1",
+		"oxfmt": "^0.44.0",
+		"oxlint": "^1.59.0",
+		"taze": "^19.11.0",
+		"typescript": "^6.0.2",
+		"vite": "^8.0.8",
+		"vite-svg-loader": "^5.1.1",
+		"vue-tsc": "^3.2.6"
+	}
+}

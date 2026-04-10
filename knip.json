@@ -1,0 +1,18 @@
+{
+	"$schema": "https://unpkg.com/knip@6/schema.json",
+	"tags": ["-lintignore"],
+	"ignoreFiles": [
+		"src/components/hero-background.vue",
+		"src/components/step-bundle-view.vue",
+		"src/components/step-download-view.vue",
+		"src/components/step-select-view.vue",
+		"src/composables/use-webcontainer.d.ts",
+		"src/lib/npm-registry.ts",
+		"taze.config.ts"
+	],
+	"ignoreDependencies": [
+		"@iconify-json/lucide",
+		"@iconify-json/simple-icons",
+		"ofetch"
+	]
+}

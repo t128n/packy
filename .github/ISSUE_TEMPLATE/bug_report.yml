@@ -1,0 +1,36 @@
+name: Bug report
+description: Report a problem with packy.
+title: "bug: "
+labels:
+    - bug
+body:
+    - type: markdown
+      attributes:
+          value: |
+              Thanks for taking the time to report a bug.
+    - type: textarea
+      id: summary
+      attributes:
+          label: Summary
+          description: What happened, and what did you expect instead?
+          placeholder: A clear and concise description of the issue.
+      validations:
+          required: true
+    - type: textarea
+      id: steps
+      attributes:
+          label: Steps to reproduce
+          description: List the minimum steps needed to reproduce the issue.
+          placeholder: |
+              1. Go to ...
+              2. Click ...
+              3. See error ...
+      validations:
+          required: true
+    - type: textarea
+      id: context
+      attributes:
+          label: Additional context
+          description: Add screenshots, logs, browser details, or anything else that helps.
+      validations:
+          required: false
