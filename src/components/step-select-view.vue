@@ -93,14 +93,14 @@ const packumentCache = new Map<string, ReturnType<typeof getPackument>>();
 
 const searchTermValue = computed(() => searchTerm.value.trim());
 const hasSearchResults = computed(
-	() => searchTermValue.value.length >= 3 && packageOptions.value.length > 0,
+	() => searchTermValue.value.length >= 1 && packageOptions.value.length > 0,
 );
 const inputIcon = computed(() => {
 	if (searchLoading.value) {
 		return "i-lucide-loader-circle";
 	}
 
-	if (searchTermValue.value.length < 3) {
+	if (searchTermValue.value.length === 0) {
 		return "i-lucide-search";
 	}
 
@@ -149,8 +149,8 @@ const searchHint = computed(() => {
 	if (searchLoading.value) return "Searching the npm registry...";
 	if (searchError.value)
 		return "Search failed. Check your network and try again.";
-	if (searchTermValue.value.length < 3)
-		return "Type at least 3 characters, or choose a popular package.";
+	if (searchTermValue.value.length === 0)
+		return "Type a package name, or choose a popular package.";
 	if (showNoResults.value && packageOptions.value.length === 0)
 		return `No packages found for "${searchTermValue.value}".`;
 	if (hasSearchResults.value)
@@ -639,10 +639,42 @@ async function searchPackages(term: string) {
 	}
 	showNoResults.value = false;
 
-	if (value.length < 3) {
+	if (value.length === 0) {
 		packageOptions.value = createPopularPackageOptions();
 		searchError.value = "";
 		searchLoading.value = false;
+		return;
+	}
+
+	if (value.length < 3) {
+		searchLoading.value = true;
+		searchError.value = "";
+
+		try {
+			const packument = await getCachedPackument(value);
+			if (requestId !== searchRequestId) {
+				return;
+			}
+
+			packageOptions.value = [storePackumentData(packument)];
+			showNoResults.value = false;
+		} catch {
+			if (requestId !== searchRequestId) {
+				return;
+			}
+
+			packageOptions.value = [];
+			noResultsTimer = setTimeout(() => {
+				if (requestId === searchRequestId) {
+					showNoResults.value = true;
+				}
+			}, 250);
+		} finally {
+			if (requestId === searchRequestId) {
+				searchLoading.value = false;
+			}
+		}
+
 		return;
 	}
 
