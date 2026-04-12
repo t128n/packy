@@ -25,3 +25,5 @@ dist-ssr
 *.sw?
 auto-imports.d.ts
 components.d.ts
+*.vue.js
+package-lock.json
