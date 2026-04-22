@@ -59,6 +59,7 @@ const mockPackages = [
 const mockBundleMeta = {
 	name: "dev-bundle",
 	version: "1.0.0",
+	method: "slim-bundle" as const,
 };
 
 const mockBundleResult = {
