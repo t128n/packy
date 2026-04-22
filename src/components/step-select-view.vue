@@ -22,6 +22,7 @@ const emit = defineEmits<{
 			packages: Array<{ name: string; version: string }>;
 			bundleName: string;
 			bundleVersion: string;
+			bundleMethod: "slim-bundle" | "full-bundle";
 		},
 	];
 }>();
@@ -59,6 +60,7 @@ const UTable = resolveComponent("UTable");
 const selectedPackages = ref<PackageItem[]>([]);
 const pendingPackage = ref("");
 const selectedVersions = ref<Record<string, string>>({});
+const bundleMethod = ref<"slim-bundle" | "full-bundle">("slim-bundle");
 const searchTerm = ref("");
 const searchLoading = ref(false);
 const searchError = ref("");
@@ -811,6 +813,7 @@ function goNext() {
 			})),
 			bundleName: bundleName.value || bundleDefaults.value.name,
 			bundleVersion: bundleVersion.value || bundleDefaults.value.version,
+			bundleMethod: bundleMethod.value,
 		});
 	}
 }
@@ -881,6 +884,10 @@ const items = computed<DropdownMenuItem[][]>(() => [
 						v-model="bundleName"
 						placeholder="My bundle"
 						class="w-full"
+						:disabled="
+							bundleMethod === 'slim-bundle' &&
+							selectedPackages.length === 1
+						"
 						@update:model-value="
 							() => {
 								bundleNameTouched = true;
@@ -894,6 +901,10 @@ const items = computed<DropdownMenuItem[][]>(() => [
 						v-model="bundleVersion"
 						placeholder="1.0.0"
 						class="w-full"
+						:disabled="
+							bundleMethod === 'slim-bundle' &&
+							selectedPackages.length === 1
+						"
 						@update:model-value="
 							() => {
 								bundleVersionTouched = true;
@@ -901,6 +912,30 @@ const items = computed<DropdownMenuItem[][]>(() => [
 						"
 					/>
 				</div>
+			</div>
+
+			<div class="space-y-2">
+				<label class="text-sm font-medium">Bundling method</label>
+				<URadioGroup
+					v-model="bundleMethod"
+					class="w-full"
+					:items="[
+						{
+							value: 'slim-bundle',
+							label: 'Slim bundle (default)',
+							description:
+								selectedPackages.length === 1
+									? `Packs ${selectedPackages[0].name} directly with its dependencies.`
+									: 'Packs all packages into a portable bundle.',
+						},
+						{
+							value: 'full-bundle',
+							label: 'Full bundle',
+							description:
+								'Always wraps packages in a new bundle container.',
+						},
+					]"
+				/>
 			</div>
 
 			<div class="space-y-2">

@@ -16,6 +16,7 @@ const props = defineProps<{
 	packages: PackageRef[];
 	bundleName: string;
 	bundleVersion: string;
+	bundleMethod: "slim-bundle" | "full-bundle";
 }>();
 
 const emit = defineEmits<{
@@ -52,8 +53,17 @@ const TARBALL_NOTICE_REGEX = /npm notice filename:\s*([^\s]+\.tgz)/i;
 const TARBALL_LINE_REGEX = /^\s*([^\s]+\.tgz)\s*$/im;
 const TARBALL_MATCH_REGEX = /([^\s]+\.tgz)/gi;
 
+const isSlimSingle = computed(
+	() => props.bundleMethod === "slim-bundle" && props.packages.length === 1,
+);
+
 const workspacePath = computed(() => `/workspace/${workspaceId.value}`);
 const bundlePath = computed(() => `${workspacePath.value}/bundle`);
+const slimSinglePath = computed(() =>
+	isSlimSingle.value
+		? `${bundlePath.value}/node_modules/${props.packages[0].name}`
+		: "",
+);
 const bundlePackages = computed<BundlePackageRef[]>(() =>
 	props.packages.map((pkg) => ({
 		...pkg,
@@ -202,6 +212,51 @@ function createWorkspaceId() {
 
 function buildWorkspacePreview(packages: BundlePackageRef[]) {
 	const archiveName = `${props.bundleName || "packy-bundle"}-${props.bundleVersion || "0.0.0"}.tgz`;
+
+	if (isSlimSingle.value) {
+		const pkg = packages[0];
+		return [
+			{
+				label: workspaceId.value
+					? `workspace/${workspaceId.value}/`
+					: "workspace/",
+				defaultExpanded: true,
+				children: [
+					{
+						label: "bundle/",
+						defaultExpanded: true,
+						children: [
+							{
+								label: "node_modules/",
+								defaultExpanded: true,
+								children: [
+									{
+										label: `${pkg.name}/`,
+										defaultExpanded: true,
+										children: [
+											{
+												label: "package.json",
+												icon: "i-vscode-icons-file-type-json",
+											},
+											{
+												label: "node_modules/",
+												icon: "i-lucide-folder",
+											},
+											{
+												label: archiveName,
+												icon: "i-lucide-archive",
+											},
+										],
+									},
+								],
+							},
+						],
+					},
+				],
+			},
+		];
+	}
+
 	return [
 		{
 			label: workspaceId.value
@@ -355,7 +410,7 @@ async function runPack() {
 	appendOutput("$ npm pack\n");
 
 	const pack = await webcontainer.exec("npm", ["pack", "--ignore-scripts"], {
-		cwd: bundlePath.value,
+		cwd: isSlimSingle.value ? slimSinglePath.value : bundlePath.value,
 		env: {
 			npm_config_ignore_scripts: "true",
 			npm_config_fund: "false",
@@ -399,7 +454,7 @@ async function startBundling() {
 			parseTarballName(output.value) ??
 			`${props.bundleName || "packy-bundle"}-${props.bundleVersion || "0.0.0"}.tgz`;
 		const tarball = await webcontainer.read(
-			`${bundlePath.value}/${packedFile}`,
+			`${isSlimSingle.value ? slimSinglePath.value : bundlePath.value}/${packedFile}`,
 			null,
 		);
 		const blob = new Blob([tarball as unknown as BlobPart], {

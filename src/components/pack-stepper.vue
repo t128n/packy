@@ -4,7 +4,11 @@ import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 
 const currentStep = ref<"select" | "bundle" | "download">("select");
 const selectedPackages = ref<Array<{ name: string; version: string }>>([]);
-const bundleMeta = ref({ name: "", version: "" });
+const bundleMeta = ref({
+	name: "",
+	version: "",
+	method: "slim-bundle" as "slim-bundle" | "full-bundle",
+});
 const bundleResult = ref({
 	name: "",
 	version: "",
@@ -82,11 +86,13 @@ function handleSelectAdvance(payload: {
 	packages: Array<{ name: string; version: string }>;
 	bundleName: string;
 	bundleVersion: string;
+	bundleMethod: "slim-bundle" | "full-bundle";
 }) {
 	selectedPackages.value = payload.packages;
 	bundleMeta.value = {
 		name: payload.bundleName,
 		version: payload.bundleVersion,
+		method: payload.bundleMethod,
 	};
 	currentStep.value = "bundle";
 }
@@ -104,7 +110,11 @@ function handleBundleReady(payload: {
 
 function handlePackMorePackages() {
 	selectedPackages.value = [];
-	bundleMeta.value = { name: "", version: "" };
+	bundleMeta.value = {
+		name: "",
+		version: "",
+		method: "slim-bundle",
+	};
 	bundleResult.value = {
 		name: "",
 		version: "",
@@ -124,7 +134,10 @@ function handleDownloadUrlRevoke(url: string) {
 // DevMode functions
 function skipToBundle() {
 	selectedPackages.value = mockPackages;
-	bundleMeta.value = mockBundleMeta;
+	bundleMeta.value = {
+		...mockBundleMeta,
+		method: "slim-bundle",
+	};
 	currentStep.value = "bundle";
 }
 
@@ -226,6 +239,7 @@ onBeforeUnmount(() => {
 					:packages="selectedPackages"
 					:bundle-name="bundleMeta.name"
 					:bundle-version="bundleMeta.version"
+					:bundle-method="bundleMeta.method"
 					@ready="handleBundleReady"
 				/>
 			</template>
