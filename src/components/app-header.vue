@@ -1,9 +1,12 @@
 <script setup lang="ts">
-import { computed, onMounted } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 
 import { useWebcontainer } from "~/composables/use-webcontainer";
 
+type Theme = "system" | "light" | "dark";
+
 const webcontainer = useWebcontainer();
+const theme = ref<Theme>("system");
 
 const logoSrc = computed(() => {
 	if (webcontainer.pending.value) {
@@ -21,63 +24,97 @@ const logoSrc = computed(() => {
 	return "/packy_sleep.svg";
 });
 
-const hasWebcontainerError = computed(() => Boolean(webcontainer.error.value));
-
-const webcontainerErrorMessage = computed(() => {
-	const error = webcontainer.error.value;
-	if (error instanceof Error) {
-		return error.message;
+const runtimeStatus = computed(() => {
+	if (webcontainer.error.value) {
+		return { label: "Runtime unavailable", role: "danger" };
 	}
 
-	return error ? String(error) : "";
+	if (webcontainer.ready.value) {
+		return { label: "Runtime ready", role: "success" };
+	}
+
+	if (webcontainer.pending.value) {
+		return { label: "Starting runtime", role: "progress" };
+	}
+
+	return { label: "Runtime idle", role: "neutral" };
 });
 
-	onMounted(() => {
-		if (!crossOriginIsolated) {
-			webcontainer.error.value = new Error(
-				"Cross-origin isolation is required to start WebContainers.",
-			);
-			console.error(
-				"WebContainers require cross-origin isolation. Restart the Vite server with COOP/COEP headers enabled.",
-			);
-			return;
+function applyTheme() {
+	const root = document.documentElement;
+
+	if (theme.value === "system") {
+		root.removeAttribute("data-theme");
+	} else {
+		root.dataset.theme = theme.value;
 	}
 
-	void webcontainer.init();
+	try {
+		localStorage.setItem("packy-theme", theme.value);
+	} catch {
+		// Storage can be unavailable in private browsing contexts.
+	}
+}
+
+watch(theme, applyTheme);
+
+onMounted(() => {
+	try {
+		const storedTheme = localStorage.getItem("packy-theme");
+		if (
+			storedTheme === "system" ||
+			storedTheme === "light" ||
+			storedTheme === "dark"
+		) {
+			theme.value = storedTheme;
+		}
+	} catch {
+		// Keep the system theme when storage is unavailable.
+	}
+
+	applyTheme();
+
+	if (!crossOriginIsolated) {
+		webcontainer.error.value = new Error(
+			"WebContainers need cross-origin isolation. Serve packy with COOP and COEP headers, then reload.",
+		);
+	}
 });
 </script>
 
 <template>
-	<UHeader title="packy">
-		<template #title>
-			<div class="flex items-center gap-2">
-				<img :src="logoSrc" alt="" class="mt-1 h-14 w-auto" />
-				<div class="flex flex-col">
-					<span class="font-semibold">packy</span>
-					<span class="text-muted text-xs font-medium"
-						>frictionless dependency bundling</span
-					>
+	<header class="app-header">
+		<div class="t128n-page">
+			<div class="app-header__inner">
+				<a class="app-brand" href="/">
+					<img :src="logoSrc" alt="" width="28" height="28" />
+					<span class="app-brand__text">
+						<span class="app-brand__name">packy</span>
+						<span class="app-brand__tagline"
+							>Offline npm bundles</span
+						>
+					</span>
+				</a>
+
+				<div class="app-header__tools">
+					<p class="runtime-status">
+						<span
+							class="status"
+							:class="`status--${runtimeStatus.role}`"
+							aria-live="polite"
+							>{{ runtimeStatus.label }}</span
+						>
+					</p>
+					<label class="theme-field">
+						<span>Theme</span>
+						<select v-model="theme" class="select">
+							<option value="system">System</option>
+							<option value="light">Light</option>
+							<option value="dark">Dark</option>
+						</select>
+					</label>
 				</div>
 			</div>
-		</template>
-	</UHeader>
-	<UModal
-		v-if="hasWebcontainerError"
-		:open="true"
-		:dismissible="false"
-		:modal="true"
-		title="WebContainers unavailable"
-		description="packy needs a cross-origin isolated browser environment to run WebContainers."
-		:close="false"
-	>
-		<template #body>
-			<p class="text-sm text-muted">
-				{{ webcontainerErrorMessage || "Unable to start the in-browser runtime." }}
-			</p>
-			<p class="text-sm text-muted mt-3">
-				Open this site from a deployment that sends COOP and COEP headers, or let the service worker reload the page once it has been registered.
-			</p>
-		</template>
-	</UModal>
-	<HeroBackground />
+		</div>
+	</header>
 </template>

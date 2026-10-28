@@ -1,57 +1,46 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, nextTick, onMounted, ref } from "vue";
 
 import { useWebcontainer } from "~/composables/use-webcontainer";
+import type { BundleMethod, BundleResult, PackageRef } from "~/lib/packy";
+import { formatBytes } from "~/lib/packy";
 
-type PackageRef = {
-	name: string;
-	version: string;
-};
-
-type BundlePackageRef = PackageRef & {
-	folder: string;
-};
+type StageValue = "prepare" | "pack" | "capture";
 
 const props = defineProps<{
 	packages: PackageRef[];
 	bundleName: string;
 	bundleVersion: string;
-	bundleMethod: "slim-bundle" | "full-bundle";
+	bundleMethod: BundleMethod;
 }>();
 
 const emit = defineEmits<{
-	ready: [
-		payload: {
-			name: string;
-			version: string;
-			filename: string;
-			url: string;
-			output: string;
-		},
-	];
+	ready: [payload: BundleResult];
+	restart: [];
 }>();
 
 const webcontainer = useWebcontainer();
 const running = ref(false);
-const paused = ref(false);
 const output = ref("");
 const error = ref("");
-const workspaceReady = ref(false);
-const currentStage = ref<
-	"idle" | "prepare" | "pack" | "capture" | "done" | "error"
->("idle");
-const failedStage = ref<"prepare" | "pack" | "capture" | null>(null);
-const workspacePreview = ref<any[]>([]);
+const currentStage = ref<"idle" | StageValue | "done" | "error">("idle");
+const failedStage = ref<StageValue | null>(null);
 const workspaceId = ref("");
 const downloadUrl = ref("");
 const downloadFilename = ref("");
 const blobSize = ref(0);
+const logElement = ref<HTMLElement | null>(null);
 
 // oxlint-disable-next-line no-control-regex: matches ANSI escape codes from npm output.
 const ANSI_REGEX = new RegExp("\\u001B\\[[0-9;]*[A-Za-z]", "g");
 const TARBALL_NOTICE_REGEX = /npm notice filename:\s*([^\s]+\.tgz)/i;
 const TARBALL_LINE_REGEX = /^\s*([^\s]+\.tgz)\s*$/im;
 const TARBALL_MATCH_REGEX = /([^\s]+\.tgz)/gi;
+const INVALID_NAME_REGEX = /[^a-zA-Z0-9._-]+/g;
+const SCOPE_PREFIX_REGEX = /^@/;
+const SCOPE_SEPARATOR_REGEX = /\//g;
+const INVALID_FILENAME_REGEX = /[^a-zA-Z0-9._-]+/g;
+const EDGE_DASH_REGEX = /^-+|-+$/g;
 
 const isSlimSingle = computed(
 	() => props.bundleMethod === "slim-bundle" && props.packages.length === 1,
@@ -61,16 +50,16 @@ const workspacePath = computed(() => `/workspace/${workspaceId.value}`);
 const bundlePath = computed(() => `${workspacePath.value}/bundle`);
 const slimSinglePath = computed(() =>
 	isSlimSingle.value
-		? `${bundlePath.value}/node_modules/${props.packages[0].name}`
+		? `${bundlePath.value}/node_modules/${props.packages[0]?.name}`
 		: "",
 );
-const bundlePackages = computed<BundlePackageRef[]>(() =>
+const bundlePackages = computed(() =>
 	props.packages.map((pkg) => ({
 		...pkg,
 		folder:
 			pkg.name
-				.replace(/[^a-zA-Z0-9._-]+/g, "-")
-				.replace(/^-+|-+$/g, "") || "package",
+				.replace(INVALID_NAME_REGEX, "-")
+				.replace(EDGE_DASH_REGEX, "") || "package",
 	})),
 );
 
@@ -78,101 +67,106 @@ const selectedSummary = computed(() =>
 	props.packages.map((pkg) => `${pkg.name}@${pkg.version}`).join(", "),
 );
 
-const stageOrder = ["prepare", "pack", "capture"] as const;
+const methodLabel = computed(() =>
+	props.bundleMethod === "slim-bundle" ? "Slim bundle" : "Full bundle",
+);
+
+const expectedFilename = computed(() =>
+	packFilename(
+		props.bundleName || "packy-bundle",
+		props.bundleVersion || "0.0.0",
+	),
+);
+
+function packFilename(name: string, version: string) {
+	const normalizedName =
+		name
+			.replace(SCOPE_PREFIX_REGEX, "")
+			.replace(SCOPE_SEPARATOR_REGEX, "-")
+			.replace(INVALID_FILENAME_REGEX, "-") || "packy-bundle";
+	const normalizedVersion =
+		version.replace(INVALID_FILENAME_REGEX, "-") || "0.0.0";
+
+	return `${normalizedName}-${normalizedVersion}.tgz`;
+}
+
+const recordStatus = computed(() => {
+	if (currentStage.value === "error") {
+		return { label: "Failed", role: "danger" };
+	}
+
+	if (currentStage.value === "done") {
+		return { label: "Complete", role: "success" };
+	}
+
+	if (running.value) {
+		return { label: "In progress", role: "progress" };
+	}
+
+	return { label: "Waiting", role: "neutral" };
+});
+
+const stageOrder: StageValue[] = ["prepare", "pack", "capture"];
+
+const stageAnnouncement = computed(() => {
+	if (!running.value || currentStage.value === "error") {
+		return "";
+	}
+
+	const stage = pipelineStages.value.find(
+		(item) => item.status.role === "progress",
+	);
+
+	return stage ? `${stage.title} in progress.` : "";
+});
 
 const pipelineStages = computed(() => {
-	const activeIndex = stageOrder.indexOf(
-		currentStage.value as (typeof stageOrder)[number],
-	);
+	const activeIndex = stageOrder.indexOf(currentStage.value as StageValue);
 	const failedIndex = failedStage.value
 		? stageOrder.indexOf(failedStage.value)
 		: -1;
 
 	return [
 		{
-			value: "prepare",
+			value: "prepare" as const,
 			title: "Prepare workspace",
-			description: "Set up bundle directory.",
+			description: "Write the bundle manifest in the in-browser runtime.",
 		},
 		{
-			value: "pack",
-			title: "Installing packages",
-			description: "Fetch and patch dependencies.",
+			value: "pack" as const,
+			title: "Install and pack",
+			description:
+				"Fetch dependencies, then create the tarball with npm.",
 		},
 		{
-			value: "capture",
-			title: "Packing archive",
-			description: "Create the tarball.",
+			value: "capture" as const,
+			title: "Capture archive",
+			description: "Read the tarball and prepare the download.",
 		},
 	].map((stage, index) => {
+		const hasFailed = failedIndex >= 0;
 		const isFailed = failedIndex === index;
-		const isActive =
-			!isFailed &&
-			activeIndex === index &&
-			running.value &&
-			!paused.value;
-		const isPaused = !isFailed && stage.value === "pack" && paused.value;
+		const isSkipped = hasFailed && index > failedIndex;
 		const isComplete =
-			currentStage.value === "done" || (!isFailed && activeIndex > index);
-		const isPending = !isActive && !isComplete && !isFailed && !isPaused;
+			currentStage.value === "done" ||
+			(!isFailed &&
+				!isSkipped &&
+				(hasFailed ? index < failedIndex : activeIndex > index));
+		const isActive =
+			!isFailed && !isSkipped && activeIndex === index && running.value;
+		const status = isFailed
+			? { label: "Failed", role: "danger" }
+			: isSkipped
+				? { label: "Skipped", role: "neutral" }
+				: isComplete
+					? { label: "Done", role: "success" }
+					: isActive
+						? { label: "In progress", role: "progress" }
+						: { label: "Waiting", role: "neutral" };
 
 		return {
 			...stage,
-			status: isFailed
-				? "error"
-				: isPaused
-					? "warning"
-					: isActive
-						? "active"
-						: isComplete
-							? "complete"
-							: "pending",
-			icon: isActive
-				? "i-lucide-loader-circle"
-				: isPaused
-					? "i-lucide-pause-circle"
-					: isComplete
-						? "i-lucide-check-circle"
-						: isFailed
-							? "i-lucide-circle-x"
-							: "i-lucide-circle-dot",
-			badge: isPaused
-				? "Paused"
-				: isActive
-					? "In progress"
-					: isComplete
-						? "Done"
-						: isFailed
-							? "Failed"
-							: "Waiting",
-			ringClass: isActive
-				? "border-primary/40 bg-primary/10 text-primary"
-				: isPaused
-					? "border-warning/40 bg-warning/10 text-warning"
-					: isComplete
-						? "border-success/40 bg-success/10 text-success"
-						: isFailed
-							? "border-error/40 bg-error/10 text-error"
-							: "border-default bg-elevated text-muted",
-			textClass: isActive
-				? "text-primary"
-				: isPaused
-					? "text-warning"
-					: isComplete
-						? "text-success"
-						: isFailed
-							? "text-error"
-							: "text-muted",
-			lineClass:
-				index < stageOrder.length - 1
-					? isComplete || isActive || currentStage.value === "done"
-						? "bg-success/60"
-						: isFailed && failedIndex > index
-							? "bg-error/60"
-							: "bg-default"
-					: "",
-			iconClass: isActive ? "animate-spin" : "",
-			bodyClass: isPending ? "opacity-80" : "",
+			status,
 		};
 	});
 });
@@ -210,92 +204,14 @@ function createWorkspaceId() {
 		.replace(/[^a-z0-9-]/g, "-");
 }
 
-function buildWorkspacePreview(packages: BundlePackageRef[]) {
-	const archiveName = `${props.bundleName || "packy-bundle"}-${props.bundleVersion || "0.0.0"}.tgz`;
-
-	if (isSlimSingle.value) {
-		const pkg = packages[0];
-		return [
-			{
-				label: workspaceId.value
-					? `workspace/${workspaceId.value}/`
-					: "workspace/",
-				defaultExpanded: true,
-				children: [
-					{
-						label: "bundle/",
-						defaultExpanded: true,
-						children: [
-							{
-								label: "node_modules/",
-								defaultExpanded: true,
-								children: [
-									{
-										label: `${pkg.name}/`,
-										defaultExpanded: true,
-										children: [
-											{
-												label: "package.json",
-												icon: "i-vscode-icons-file-type-json",
-											},
-											{
-												label: "node_modules/",
-												icon: "i-lucide-folder",
-											},
-											{
-												label: archiveName,
-												icon: "i-lucide-archive",
-											},
-										],
-									},
-								],
-							},
-						],
-					},
-				],
-			},
-		];
-	}
-
-	return [
-		{
-			label: workspaceId.value
-				? `workspace/${workspaceId.value}/`
-				: "workspace/",
-			defaultExpanded: true,
-			children: [
-				{
-					label: "bundle/",
-					defaultExpanded: true,
-					children: [
-						{
-							label: "package.json",
-							icon: "i-vscode-icons-file-type-json",
-						},
-						{
-							label: "node_modules/",
-							defaultExpanded: true,
-							children: packages.map((pkg) => ({
-								label: pkg.name,
-								defaultExpanded: true,
-								children: [
-									{
-										label: "package.json",
-										icon: "i-vscode-icons-file-type-json",
-									},
-								],
-							})),
-						},
-						{ label: archiveName, icon: "i-lucide-archive" },
-					],
-				},
-			],
-		},
-	];
+function errorMessage(cause: unknown) {
+	return cause instanceof Error ? cause.message : String(cause);
 }
 
 async function prepareWorkspace() {
-	if (!props.packages.length) throw new Error("No packages selected");
+	if (!props.packages.length) {
+		throw new Error("No packages were selected.");
+	}
 
 	currentStage.value = "prepare";
 	failedStage.value = null;
@@ -321,6 +237,7 @@ async function prepareWorkspace() {
 		},
 	};
 
+	await webcontainer.init();
 	await webcontainer.write({
 		workspace: {
 			directory: {
@@ -344,9 +261,6 @@ async function prepareWorkspace() {
 			},
 		},
 	});
-
-	workspacePreview.value = buildWorkspacePreview(bundlePackages.value);
-	workspaceReady.value = true;
 }
 
 async function runPack() {
@@ -370,8 +284,9 @@ async function runPack() {
 	);
 
 	const installCode = await install.exit;
-	if (installCode !== 0)
-		throw new Error(`npm install failed with exit code ${installCode}`);
+	if (installCode !== 0) {
+		throw new Error(`npm install failed with exit code ${installCode}.`);
+	}
 
 	// Patch each selected package's package.json with bundleDependencies so
 	// npm pack recursively includes their nested node_modules in the tarball.
@@ -403,7 +318,7 @@ async function runPack() {
 		};
 		await fs.writeFile(
 			manifestPath,
-			JSON.stringify(manifest, null, 2) + "\n",
+			`${JSON.stringify(manifest, null, 2)}\n`,
 		);
 	}
 
@@ -423,36 +338,39 @@ async function runPack() {
 	});
 
 	const code = await pack.exit;
-	if (code !== 0) throw new Error(`npm pack failed with exit code ${code}`);
+	if (code !== 0) {
+		throw new Error(`npm pack failed with exit code ${code}.`);
+	}
 }
 
-async function startBundling() {
-	if (running.value) return;
+async function startBundling(focusLog = false) {
+	if (running.value) {
+		return;
+	}
 
 	running.value = true;
-	paused.value = false;
 	error.value = "";
+	if (downloadUrl.value) {
+		URL.revokeObjectURL(downloadUrl.value);
+	}
 	downloadUrl.value = "";
 	downloadFilename.value = "";
 	blobSize.value = 0;
 	output.value = "";
-	workspaceReady.value = false;
-	workspacePreview.value = [];
+	failedStage.value = null;
+
+	if (focusLog) {
+		await nextTick();
+		logElement.value?.focus();
+	}
 
 	try {
 		await prepareWorkspace();
 		await runPack();
 		currentStage.value = "capture";
 
-		// Check if paused before completing
-		if (paused.value) {
-			// Don't complete the bundling process
-			return;
-		}
-
 		const packedFile =
-			parseTarballName(output.value) ??
-			`${props.bundleName || "packy-bundle"}-${props.bundleVersion || "0.0.0"}.tgz`;
+			parseTarballName(output.value) ?? expectedFilename.value;
 		const tarball = await webcontainer.read(
 			`${isSlimSingle.value ? slimSinglePath.value : bundlePath.value}/${packedFile}`,
 			null,
@@ -470,114 +388,132 @@ async function startBundling() {
 			filename: packedFile,
 			url: downloadUrl.value,
 			output: output.value,
+			size: blob.size,
 		});
 	} catch (cause) {
-		failedStage.value = ["prepare", "pack", "capture"].includes(
-			currentStage.value,
+		failedStage.value = stageOrder.includes(
+			currentStage.value as StageValue,
 		)
-			? (currentStage.value as "prepare" | "pack" | "capture")
+			? (currentStage.value as StageValue)
 			: null;
 		currentStage.value = "error";
-		error.value = cause instanceof Error ? cause.message : String(cause);
+		error.value = errorMessage(cause);
 	} finally {
-		if (!paused.value) {
-			running.value = false;
-		}
+		running.value = false;
 	}
 }
 
 onMounted(() => {
-	startBundling();
+	void startBundling(false);
 });
 </script>
 
 <template>
-	<UCard>
-		<template #header>
-			<div class="space-y-1">
-				<div class="flex items-center justify-between">
-					<div class="flex items-center gap-2">
-						<h2 class="mt-2 text-xl font-semibold">Bundle</h2>
-					</div>
-				</div>
-				<p class="text-muted truncate text-sm">{{ selectedSummary }}</p>
+	<section class="t128n-record" aria-labelledby="bundle-title">
+		<aside class="t128n-record__meta">
+			<div class="record-identity">
+				<h2 class="headline-md">{{ bundleName || "packy-bundle" }}</h2>
+				<p class="mono">{{ bundleVersion || "0.0.0" }}</p>
 			</div>
-		</template>
 
-		<div class="space-y-6">
-			<div class="grid gap-6 lg:grid-cols-2">
-				<div class="space-y-3">
-					<div
-						v-for="(stage, index) in pipelineStages"
-						:key="stage.value"
-						class="grid grid-cols-[auto_1fr] gap-3"
-					>
-						<div class="flex flex-col items-center">
-							<div
-								class="flex h-8 w-8 items-center justify-center rounded-full border text-sm"
-								:class="stage.ringClass"
-							>
-								<UIcon
-									:name="stage.icon"
-									class="shrink-0"
-									:class="stage.iconClass"
-								/>
-							</div>
-							<div
-								v-if="index < pipelineStages.length - 1"
-								class="my-2 w-px flex-1 rounded-full"
-								:class="stage.lineClass"
-							/>
-						</div>
-
-						<div class="min-w-0 pb-3" :class="stage.bodyClass">
-							<div class="flex flex-wrap items-center gap-2">
-								<p class="font-medium" :class="stage.textClass">
-									{{ stage.title }}
-								</p>
-								<UBadge
-									:color="
-										stage.status === 'complete'
-											? 'success'
-											: stage.status === 'active'
-												? 'primary'
-												: stage.status === 'warning'
-													? 'warning'
-													: stage.status === 'error'
-														? 'error'
-														: 'neutral'
-									"
-									variant="soft"
-									size="xs"
-								>
-									{{ stage.badge }}
-								</UBadge>
-							</div>
-							<p class="text-muted mt-1 text-sm">
-								{{ stage.description }}
-							</p>
-						</div>
-					</div>
+			<dl class="key-value">
+				<div>
+					<dt>Method</dt>
+					<dd>{{ methodLabel }}</dd>
 				</div>
+				<div>
+					<dt>Packages</dt>
+					<dd class="numeric">
+						{{ packages.length }}
+					</dd>
+				</div>
+				<div>
+					<dt>Archive</dt>
+					<dd class="mono">
+						{{ downloadFilename || expectedFilename }}
+					</dd>
+				</div>
+				<div>
+					<dt>Archive size</dt>
+					<dd class="numeric">
+						{{ formatBytes(blobSize || undefined) }}
+					</dd>
+				</div>
+			</dl>
+		</aside>
 
-				<pre
-					class="relative max-h-80 overflow-auto rounded-lg border border-gray-700 bg-black p-4 font-mono text-xs whitespace-pre-wrap text-green-400 before:absolute before:top-2 before:left-4 before:rounded before:bg-black before:px-2 before:py-1 before:text-xs before:text-gray-500"
-					>{{ output || "Waiting for output…" }}</pre
+		<div class="t128n-record__body">
+			<header class="record-header">
+				<div>
+					<h2 id="bundle-title" class="headline-md">
+						Bundling packages
+					</h2>
+					<p>{{ selectedSummary }}</p>
+				</div>
+				<span class="status" :class="`status--${recordStatus.role}`">{{
+					recordStatus.label
+				}}</span>
+			</header>
+
+			<p class="sr-only" role="status" aria-live="polite">
+				{{ stageAnnouncement }}
+			</p>
+
+			<ol class="pipeline" aria-label="Bundling stages">
+				<li
+					v-for="(stage, index) in pipelineStages"
+					:key="stage.value"
+					class="pipeline__item"
 				>
-			</div>
-		</div>
+					<span class="pipeline__index">{{ index + 1 }}</span>
+					<span class="pipeline__text">
+						<span class="pipeline__title">{{ stage.title }}</span>
+						<span class="pipeline__description">{{
+							stage.description
+						}}</span>
+					</span>
+					<span
+						class="status"
+						:class="`status--${stage.status.role}`"
+						>{{ stage.status.label }}</span
+					>
+				</li>
+			</ol>
 
-		<!-- Error (when failed) -->
-		<div
-			v-if="currentStage === 'error'"
-			class="border-error/30 bg-error/10 mt-6 rounded-lg border p-4"
-		>
-			<div class="min-w-0">
-				<p class="text-error">{{ error }}</p>
+			<section class="log-section" aria-labelledby="log-title">
+				<div class="section-heading">
+					<h2 id="log-title" class="headline-md">Build log</h2>
+					<p>Live npm output from the in-browser runtime.</p>
+				</div>
+				<pre ref="logElement" class="code-block" tabindex="0">{{
+					output || "Waiting for npm output…"
+				}}</pre>
+			</section>
+
+			<div v-if="error" class="notice notice--error" role="alert">
+				<p><strong>Bundling failed.</strong> {{ error }}</p>
+				<p>
+					Retry keeps the selected packages and bundle settings. Check
+					the build log, then retry, or start over to choose different
+					packages.
+				</p>
 			</div>
-			<UButton color="error" variant="soft" @click="startBundling">
-				Retry
-			</UButton>
+			<div v-if="error" class="actions">
+				<button
+					class="button button--primary"
+					type="button"
+					@click="startBundling(true)"
+				>
+					Retry bundling
+				</button>
+				<button
+					class="button button--secondary"
+					type="button"
+					@click="emit('restart')"
+				>
+					Start over
+				</button>
+			</div>
 		</div>
-	</UCard>
+	</section>
 </template>

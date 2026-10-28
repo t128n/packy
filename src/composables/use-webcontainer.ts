@@ -35,9 +35,18 @@ const defaultEnv = {
 	npm_config_loglevel: "error",
 };
 
+function assertCrossOriginIsolation() {
+	if (!crossOriginIsolated) {
+		throw new Error(
+			"WebContainers need cross-origin isolation. Serve packy with COOP and COEP headers, then reload.",
+		);
+	}
+}
+
 function getContainer() {
 	if (!containerPromise) {
 		containerPromise = (async () => {
+			assertCrossOriginIsolation();
 			const instance = await WebContainer.boot();
 			container.value = instance;
 			ready.value = true;
@@ -53,8 +62,6 @@ function getContainer() {
 }
 
 export function useWebcontainer() {
-	void init();
-
 	async function init() {
 		if (container.value) {
 			return container.value;
@@ -78,10 +85,10 @@ export function useWebcontainer() {
 		args: string[] = [],
 		options: ExecOptions = {},
 	) {
-		const container = await init();
+		const instance = await init();
 		const cwd = options.cwd ?? options.path ?? "/";
 
-		const process = await container.spawn(command, args, {
+		const process = await instance.spawn(command, args, {
 			cwd,
 			env: {
 				...defaultEnv,
@@ -114,21 +121,18 @@ export function useWebcontainer() {
 	}
 
 	async function write(files: WriteFilesInput) {
-		const container = await init();
-		await container.mount(files);
+		const instance = await init();
+		await instance.mount(files);
 	}
 
-	async function read(
-		filePath: string,
-		encoding: BufferEncoding | null = "utf-8" as BufferEncoding,
-	) {
-		const container = await init();
-		return container.fs.readFile(filePath, encoding as any);
+	async function read(filePath: string, encoding: "utf-8" | null = "utf-8") {
+		const instance = await init();
+		return instance.fs.readFile(filePath, encoding as never);
 	}
 
 	async function mount(files: WriteFilesInput) {
-		const container = await init();
-		await container.mount(files);
+		const instance = await init();
+		await instance.mount(files);
 	}
 
 	return {

@@ -16,8 +16,14 @@ packy is a browser-based tool for bundling npm dependencies into a tarball for a
 - Vue 3
 - TypeScript
 - Vite
-- Nuxt UI
 - WebContainers
+- t128n design system
+
+## Design system
+
+The interface uses the t128n design system. `src/t128n/tokens.css` and
+`src/t128n/layouts.css` are generated artifacts; see `src/t128n/README.md` before
+changing them.
 
 ## Requirements
 
@@ -28,18 +34,18 @@ It is designed for environments where direct access to npm registries cannot be 
 ## Development
 
 ```bash
-npm install
-npm run dev
+bun install
+bun run dev
 ```
 
 ## Build
 
 ```bash
-npm run build
+bun run build
 ```
 
 ## Preview
 
 ```bash
-npm run preview
+bun run preview
 ```

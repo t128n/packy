@@ -18,13 +18,9 @@
 		"test:typecheck": "vue-tsc --noEmit"
 	},
 	"dependencies": {
-		"@iconify-json/lucide": "^1.2.102",
-		"@iconify-json/simple-icons": "^1.2.77",
-		"@nuxt/ui": "^4.6.1",
 		"@webcontainer/api": "^1.6.1",
 		"coi-serviceworker": "^0.1.7",
 		"ofetch": "^1.5.1",
-		"tailwindcss": "^4.2.2",
 		"vue": "^3.5.32"
 	},
 	"devDependencies": {
@@ -38,7 +34,6 @@
 		"taze": "^19.11.0",
 		"typescript": "^6.0.2",
 		"vite": "^8.0.8",
-		"vite-svg-loader": "^5.1.1",
 		"vue-tsc": "^3.2.6"
 	}
 }

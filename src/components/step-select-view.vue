@@ -1,85 +1,35 @@
 <script setup lang="ts">
-import type { TableColumn } from "@nuxt/ui";
 import {
 	computed,
-	h,
 	nextTick,
 	onBeforeUnmount,
 	onMounted,
 	ref,
-	resolveComponent,
 	watch,
 } from "vue";
 
+import { useWebcontainer } from "~/composables/use-webcontainer";
 import {
 	getPackument,
 	searchPackages as searchRegistryPackages,
+	type RegistryPackument,
 } from "~/lib/npm-registry";
+import type {
+	BundleMethod,
+	PackageVersion,
+	SelectAdvancePayload,
+	SelectedPackage,
+} from "~/lib/packy";
+import { formatBytes } from "~/lib/packy";
+
+type SearchResult = SelectedPackage & {
+	latest: string;
+	versionCount: number;
+};
 
 const emit = defineEmits<{
-	advance: [
-		payload: {
-			packages: Array<{ name: string; version: string }>;
-			bundleName: string;
-			bundleVersion: string;
-			bundleMethod: "slim-bundle" | "full-bundle";
-		},
-	];
+	advance: [payload: SelectAdvancePayload];
 }>();
-
-type PackageItem = {
-	name: string;
-	version: string;
-	versions: string[];
-	sizeBytes?: number;
-};
-
-type PackageVersionOption = {
-	label: string;
-	value: string;
-	description?: string;
-	latest?: boolean;
-	deprecated?: string;
-	sizeBytes?: number;
-};
-
-type PackageVersionMenuItem = PackageVersionOption;
-
-type PackageOption = {
-	label: string;
-	value: string;
-	description: string;
-};
-
-const UButton = resolveComponent("UButton");
-const UBadge = resolveComponent("UBadge");
-const UIcon = resolveComponent("UIcon");
-const USelectMenu = resolveComponent("USelectMenu");
-const UTable = resolveComponent("UTable");
-
-const selectedPackages = ref<PackageItem[]>([]);
-const pendingPackage = ref("");
-const selectedVersions = ref<Record<string, string>>({});
-const bundleMethod = ref<"slim-bundle" | "full-bundle">("slim-bundle");
-const searchTerm = ref("");
-const searchLoading = ref(false);
-const searchError = ref("");
-const showNoResults = ref(false);
-const bundleName = ref("");
-const bundleVersion = ref("");
-const bundleNameTouched = ref(false);
-const bundleVersionTouched = ref(false);
-const packageDescriptions = ref<Record<string, string>>({});
-const packageVersions = ref<Record<string, PackageVersionOption[]>>({});
-const packageLatest = ref<Record<string, string>>({});
-const packageOptions = ref<PackageOption[]>([]);
-const packageJsonFileInput = ref<HTMLInputElement | null>(null);
-let searchRequestId = 0;
-let noResultsTimer: ReturnType<typeof setTimeout> | null = null;
-let searchTimer: ReturnType<typeof setTimeout> | null = null;
-
-const VERSION_PREFIX_REGEX = /^v/;
-const VERSION_SPLIT_REGEX = /[.-]/;
 
 const popularPackages = [
 	"react",
@@ -91,50 +41,119 @@ const popularPackages = [
 	"prettier",
 	"lodash",
 ];
-const packumentCache = new Map<string, ReturnType<typeof getPackument>>();
 
-const searchTermValue = computed(() => searchTerm.value.trim());
-const hasSearchResults = computed(
-	() => searchTermValue.value.length >= 1 && packageOptions.value.length > 0,
-);
-const inputIcon = computed(() => {
-	if (searchLoading.value) {
-		return "i-lucide-loader-circle";
+const VERSION_PREFIX_REGEX = /^v/;
+const VERSION_SPLIT_REGEX = /[.-]/;
+const INVALID_NAME_REGEX = /[^a-zA-Z0-9._-]+/g;
+const EDGE_DASH_REGEX = /^-+|-+$/g;
+const PACKAGE_NAME_REGEX = /^(?:@[a-z0-9._-]+\/)?[a-z0-9._-]+$/;
+const EXACT_VERSION_REGEX = /^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/;
+const NOT_FOUND_REGEX = /(?:^|\D)404(?:\D|$)/;
+const NETWORK_ERROR_REGEX =
+	/NetworkError|Failed to fetch|no response|Network request failed/i;
+
+const webcontainer = useWebcontainer();
+const isolationAvailable = crossOriginIsolated;
+const selectedPackages = ref<SelectedPackage[]>([]);
+const bundleMethod = ref<BundleMethod>("slim-bundle");
+const bundleName = ref("");
+const bundleVersion = ref("");
+const bundleNameTouched = ref(false);
+const bundleVersionTouched = ref(false);
+const bundleNameError = ref("");
+const bundleVersionError = ref("");
+const bundleNameInput = ref<HTMLInputElement | null>(null);
+const bundleVersionInput = ref<HTMLInputElement | null>(null);
+const searchTerm = ref("");
+const lastSearchTerm = ref("");
+const searchLoading = ref(false);
+const searchError = ref("");
+const searchRetryTerm = ref("");
+const searchAnnouncement = ref("");
+const searchResults = ref<SearchResult[]>([]);
+const hasSearched = ref(false);
+const addingPackage = ref("");
+const importError = ref("");
+const importWarning = ref("");
+const importing = ref(false);
+const selectionAnnouncement = ref("");
+const searchInput = ref<HTMLInputElement | null>(null);
+const packageSection = ref<HTMLElement | null>(null);
+const packageJsonFileInput = ref<HTMLInputElement | null>(null);
+let searchRequestId = 0;
+let importRequestId = 0;
+
+const runtimeError = computed(() => {
+	const error = webcontainer.error.value;
+	if (!error) {
+		return "";
 	}
 
-	if (searchTermValue.value.length === 0) {
-		return "i-lucide-search";
-	}
-
-	return hasSearchResults.value
-		? "i-lucide-package-search"
-		: "i-lucide-circle-alert";
+	return error instanceof Error ? error.message : String(error);
 });
 
 const canAdvance = computed(() => selectedPackages.value.length > 0);
+const bundleErrorCount = computed(
+	() =>
+		Number(Boolean(bundleNameError.value)) +
+		Number(Boolean(bundleVersionError.value)),
+);
+const isSingleSlim = computed(
+	() =>
+		bundleMethod.value === "slim-bundle" &&
+		selectedPackages.value.length === 1,
+);
+const slimVersionNeedsExact = computed(() => {
+	if (!isSingleSlim.value) {
+		return false;
+	}
+
+	const selected = selectedPackages.value[0];
+	return Boolean(selected && !EXACT_VERSION_REGEX.test(selected.version));
+});
+
+const canBundle = computed(
+	() =>
+		canAdvance.value &&
+		isolationAvailable &&
+		!slimVersionNeedsExact.value &&
+		!importing.value &&
+		!addingPackage.value,
+);
 
 const bundleDefaults = computed(() => {
-	const items = selectedPackages.value;
-
-	if (!items.length) {
+	if (!selectedPackages.value.length) {
 		return { name: "", version: "" };
 	}
 
 	return {
-		name: items
+		name: selectedPackages.value
 			.map((item) => item.name)
 			.join("-")
-			.replace(/[^a-zA-Z0-9._-]+/g, "-"),
-		version: items
-			.map((item) => item.version.replace(/[^a-zA-Z0-9._-]+/g, "-"))
-			.join("-"),
+			.replace(INVALID_NAME_REGEX, "-")
+			.replace(EDGE_DASH_REGEX, ""),
+		version: selectedPackages.value.every((item) =>
+			EXACT_VERSION_REGEX.test(item.version),
+		)
+			? selectedPackages.value
+					.map((item) =>
+						item.version.replace(INVALID_NAME_REGEX, "-"),
+					)
+					.join("-")
+			: "1.0.0",
 	};
 });
+
+const methodLabel = computed(() =>
+	bundleMethod.value === "slim-bundle" ? "Slim bundle" : "Full bundle",
+);
 
 const packageJsonExport = computed(() =>
 	JSON.stringify(
 		{
-			name: `packy-${sanitizePackageName(bundleName.value || bundleDefaults.value.name || "bundle")}`,
+			name: `packy-${sanitizePackageName(
+				bundleName.value || bundleDefaults.value.name || "bundle",
+			)}`,
 			version:
 				bundleVersion.value || bundleDefaults.value.version || "0.0.0",
 			private: true,
@@ -147,171 +166,53 @@ const packageJsonExport = computed(() =>
 	),
 );
 
-const searchHint = computed(() => {
-	if (searchLoading.value) return "Searching the npm registry...";
-	if (searchError.value)
-		return "Search failed. Check your network and try again.";
-	if (searchTermValue.value.length === 0)
-		return "Type a package name, or choose a popular package.";
-	if (showNoResults.value && packageOptions.value.length === 0)
-		return `No packages found for "${searchTermValue.value}".`;
-	if (hasSearchResults.value)
-		return `${packageOptions.value.length} package${packageOptions.value.length === 1 ? "" : "s"} found`;
+watch(
+	[bundleDefaults, isSingleSlim],
+	([{ name, version }]) => {
+		if (isSingleSlim.value) {
+			bundleName.value = selectedPackages.value[0]?.name ?? name;
+			bundleVersion.value = selectedPackages.value[0]?.version ?? version;
+			return;
+		}
 
-	return "Search npm packages by name.";
+		if (!bundleNameTouched.value) {
+			bundleName.value = name;
+		}
+
+		if (!bundleVersionTouched.value) {
+			bundleVersion.value = version;
+		}
+	},
+	{ immediate: true },
+);
+
+watch([bundleMethod, isSingleSlim], ([method], [previousMethod]) => {
+	bundleNameError.value = "";
+	bundleVersionError.value = "";
+
+	if (
+		previousMethod === "slim-bundle" &&
+		method === "full-bundle" &&
+		!EXACT_VERSION_REGEX.test(bundleVersion.value.trim())
+	) {
+		bundleVersion.value = bundleDefaults.value.version;
+		bundleVersionTouched.value = false;
+	}
 });
 
-function formatBytes(bytes: number) {
-	const units = ["B", "KB", "MB", "GB"];
-	let size = bytes;
-	let unit = 0;
-
-	while (size >= 1024 && unit < units.length - 1) {
-		size /= 1024;
-		unit += 1;
+watch(searchTerm, (term) => {
+	if (term.trim()) {
+		return;
 	}
 
-	return `${size.toFixed(size >= 10 || unit === 0 ? 0 : 1)} ${units[unit]}`;
-}
-
-function sanitizePackageName(name: string) {
-	return (
-		name.replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/^-+|-+$/g, "") ||
-		"package"
-	);
-}
-
-function getVersionOption(name: string, version: string) {
-	return packageVersions.value[name]?.find(
-		(option) => option.value === version,
-	);
-}
-
-function getSelectedPackageSize(name: string, version: string) {
-	return getVersionOption(name, version)?.sizeBytes;
-}
-
-function createPopularPackageOptions(): PackageOption[] {
-	return popularPackages.map((name) => ({
-		label: name,
-		value: name,
-		description: "Popular package suggestion",
-	}));
-}
-
-function storePackumentData(
-	packument: Awaited<ReturnType<typeof getPackument>>,
-) {
-	const rawVersions = Object.entries(packument.versions ?? {});
-	const latest =
-		packument["dist-tags"]?.latest ?? rawVersions.at(-1)?.[0] ?? "latest";
-	const versions: PackageVersionOption[] = rawVersions
-		.sort(([left], [right]) => compareVersionsDesc(left, right))
-		.map(([version, meta]) => ({
-			label: version,
-			value: version,
-			description: meta.deprecated,
-			latest: version === latest,
-			deprecated: meta.deprecated,
-			sizeBytes: meta.dist?.unpackedSize,
-		}));
-
-	packageVersions.value[packument.name] = versions.length
-		? versions
-		: [{ label: latest, value: latest, latest: true }];
-	packageLatest.value[packument.name] = latest;
-	packageDescriptions.value[packument.name] = packument.description ?? "";
-
-	return {
-		label: packument.name,
-		value: packument.name,
-		description: [
-			latest,
-			packument.description ?? "",
-			`${versions.length} versions`,
-		]
-			.filter(Boolean)
-			.join(" · "),
-	};
-}
-
-function getCachedPackument(name: string) {
-	const existing = packumentCache.get(name);
-	if (existing) {
-		return existing;
-	}
-
-	const promise = getPackument(name);
-	packumentCache.set(name, promise);
-	return promise;
-}
-
-async function loadPopularPackages() {
-	const packuments = await Promise.all(
-		popularPackages.map((name) => getCachedPackument(name)),
-	);
-	packageOptions.value = packuments.map(storePackumentData);
-}
-
-async function importPackageJsonText(text: string) {
-	const manifest = JSON.parse(text) as {
-		name?: string;
-		version?: string;
-		dependencies?: Record<string, string>;
-	};
-
-	const dependencies = Object.entries(manifest.dependencies ?? {});
-	if (!dependencies.length) {
-		throw new Error("package.json does not contain any dependencies");
-	}
-
-	bundleName.value = manifest.name ?? bundleName.value;
-	bundleVersion.value = manifest.version ?? bundleVersion.value;
-	bundleNameTouched.value = true;
-	bundleVersionTouched.value = true;
-
-	const packuments = await Promise.all(
-		dependencies.map(([name]) => getCachedPackument(name)),
-	);
-	packageOptions.value = packuments.map(storePackumentData);
-
-	selectedPackages.value = dependencies.map(([name, version]) => ({
-		name,
-		version,
-		versions: packageVersions.value[name]?.map(
-			(option) => option.value,
-		) ?? [version],
-		sizeBytes: getSelectedPackageSize(name, version),
-	}));
-
-	selectedVersions.value = Object.fromEntries(dependencies);
-	searchTerm.value = "";
-	pendingPackage.value = "";
-}
-
-function exportPackageJson() {
-	const blob = new Blob([`${packageJsonExport.value}\n`], {
-		type: "application/json",
-	});
-	const url = URL.createObjectURL(blob);
-	const link = document.createElement("a");
-	link.href = url;
-	link.download = `${sanitizePackageName(bundleName.value || bundleDefaults.value.name || "packy-bundle")}.package.json`;
-	link.click();
-	URL.revokeObjectURL(url);
-}
-
-async function handlePackageJsonFileChange(event: Event) {
-	const input = event.target as HTMLInputElement;
-	const file = input.files?.[0];
-	if (!file) return;
-
-	try {
-		await importPackageJsonText(await file.text());
-	} finally {
-		input.value = "";
-	}
-}
+	searchRequestId += 1;
+	searchResults.value = [];
+	searchError.value = "";
+	searchRetryTerm.value = "";
+	searchAnnouncement.value = "";
+	hasSearched.value = false;
+	searchLoading.value = false;
+});
 
 function compareVersionsDesc(a: string, b: string) {
 	const parse = (value: string) =>
@@ -343,405 +244,158 @@ function compareVersionsDesc(a: string, b: string) {
 	return 0;
 }
 
-function getSelectedVersion(name: string) {
+function packageData(packument: RegistryPackument) {
+	const rawVersions = Object.entries(packument.versions ?? {});
+	const latest =
+		packument["dist-tags"]?.latest ?? rawVersions.at(-1)?.[0] ?? "latest";
+	const versions: PackageVersion[] = rawVersions
+		.toSorted(([left], [right]) => compareVersionsDesc(left, right))
+		.map(([version, meta]) => ({
+			value: version,
+			label: version,
+			latest: version === latest,
+			deprecated: meta.deprecated,
+			sizeBytes: meta.dist?.unpackedSize,
+		}));
+
+	return {
+		latest,
+		description: packument.description ?? "",
+		versions:
+			versions.length > 0
+				? versions
+				: [{ value: latest, label: latest, latest: true }],
+	};
+}
+
+function toSearchResult(packument: RegistryPackument): SearchResult {
+	const data = packageData(packument);
+	const latestOption =
+		data.versions.find((option) => option.value === data.latest) ??
+		data.versions[0];
+
+	return {
+		name: packument.name,
+		version: data.latest,
+		latest: data.latest,
+		versions: data.versions,
+		description: data.description,
+		sizeBytes: latestOption?.sizeBytes,
+		versionCount: data.versions.length,
+	};
+}
+
+function sanitizePackageName(name: string) {
 	return (
-		selectedVersions.value[name] ??
-		packageLatest.value[name] ??
-		packageVersions.value[name]?.[0] ??
-		"latest"
+		name.replace(INVALID_NAME_REGEX, "-").replace(EDGE_DASH_REGEX, "") ||
+		"package"
 	);
 }
 
-async function addSelectedPackage(name: string) {
-	if (!name) {
+function getVersionOption(pkg: SelectedPackage, version: string) {
+	return pkg.versions.find((option) => option.value === version);
+}
+
+function selectedVersionOption(pkg: SelectedPackage) {
+	return getVersionOption(pkg, pkg.version);
+}
+
+function selectedSize(pkg: SelectedPackage) {
+	return pkg.sizeBytes ?? selectedVersionOption(pkg)?.sizeBytes;
+}
+
+function isSelected(name: string) {
+	return selectedPackages.value.some((pkg) => pkg.name === name);
+}
+
+function errorMessage(cause: unknown) {
+	return cause instanceof Error ? cause.message : String(cause);
+}
+
+function registryErrorMessage(cause: unknown) {
+	const message = errorMessage(cause);
+
+	if (NETWORK_ERROR_REGEX.test(message)) {
+		return "The npm registry could not be reached. Check your connection and try again.";
+	}
+
+	return message;
+}
+
+function isNotFoundError(cause: unknown) {
+	if (cause && typeof cause === "object" && "statusCode" in cause) {
+		return (cause as { statusCode?: number }).statusCode === 404;
+	}
+
+	return NOT_FOUND_REGEX.test(errorMessage(cause));
+}
+
+async function runSearch() {
+	if (importing.value) {
 		return;
 	}
 
-	if (selectedPackages.value.some((pkg) => pkg.name === name)) {
-		pendingPackage.value = "";
-		return;
-	}
+	const value = searchTerm.value.trim();
 
-	selectedPackages.value = [
-		...selectedPackages.value,
-		{
-			name,
-			version: getSelectedVersion(name),
-			versions: packageVersions.value[name]?.map(
-				(option) => option.value,
-			) ?? [getSelectedVersion(name)],
-			sizeBytes: getSelectedPackageSize(name, getSelectedVersion(name)),
-		},
-	];
-
-	await nextTick();
-	pendingPackage.value = "";
-	searchTerm.value = "";
-}
-
-function removeSelectedPackage(name: string) {
-	selectedPackages.value = selectedPackages.value.filter(
-		(pkg) => pkg.name !== name,
-	);
-	delete selectedVersions.value[name];
-}
-
-function updateSelectedPackageVersion(name: string, version: string) {
-	selectedVersions.value[name] = version;
-	selectedPackages.value = selectedPackages.value.map((pkg) =>
-		pkg.name === name
-			? {
-					...pkg,
-					version,
-					sizeBytes: getSelectedPackageSize(name, version),
-				}
-			: pkg,
-	);
-}
-
-watch(
-	bundleDefaults,
-	({ name, version }) => {
-		if (!bundleNameTouched.value) {
-			bundleName.value = name;
-		}
-
-		if (!bundleVersionTouched.value) {
-			bundleVersion.value = version;
-		}
-	},
-	{ immediate: true },
-);
-
-const packageColumns: TableColumn<PackageItem>[] = [
-	{
-		accessorKey: "name",
-		header: "Package",
-		cell: ({ row }) =>
-			h("div", { class: "max-w-xs space-y-1" }, [
-				h("p", { class: "truncate font-medium" }, row.getValue("name")),
-				h(
-					"p",
-					{ class: "truncate text-xs text-muted" },
-					packageDescriptions.value[row.original.name] ?? "",
-				),
-			]),
-	},
-	{
-		accessorKey: "version",
-		header: "Version",
-		cell: ({ row }) =>
-				h(
-					USelectMenu,
-					{
-						modelValue:
-							selectedVersions.value[row.original.name] ??
-							row.original.version,
-						items:
-							packageVersions.value[row.original.name] ??
-							[...row.original.versions]
-								.sort(compareVersionsDesc)
-								.map((version: string) => ({
-									label: version,
-									value: version,
-								})),
-					class: "w-full max-w-xs",
-					searchInput: true,
-					portal: true,
-					"onUpdate:modelValue": (value: string) => {
-						updateSelectedPackageVersion(row.original.name, value);
-					},
-				},
-				{
-					item: ({ item }: { item: PackageVersionMenuItem }) => {
-						const version = item;
-
-						return h(
-							"div",
-							{
-								class: "flex w-full items-start justify-between gap-3",
-							},
-							[
-								h("div", { class: "min-w-0" }, [
-									h(
-										"div",
-										{ class: "flex items-center gap-2" },
-										[
-											h(
-												"span",
-												{ class: "font-medium" },
-												version.label,
-											),
-											version.latest
-												? h(
-														UBadge,
-														{
-															color: "primary",
-															variant: "soft",
-															size: "xs",
-														},
-														() => "latest",
-													)
-												: null,
-											version.deprecated
-												? h(
-														UBadge,
-														{
-															color: "error",
-															variant: "soft",
-															size: "xs",
-														},
-														() => "deprecated",
-													)
-												: null,
-										],
-									),
-									h(
-										"div",
-										{
-											class: "mt-1 flex flex-wrap gap-2 text-xs text-muted",
-										},
-										[
-											version.description
-												? h("span", version.description)
-												: null,
-											version.sizeBytes
-												? h(
-														"span",
-														formatBytes(
-															version.sizeBytes,
-														),
-													)
-												: null,
-										],
-									),
-								]),
-							],
-						);
-					},
-					"item-trailing": ({
-						item,
-					}: {
-						item: PackageVersionMenuItem;
-					}) => {
-						const version = item;
-
-						if (!version.deprecated) {
-							return [];
-						}
-
-						return [
-							h(
-								UBadge,
-								{ color: "error", variant: "soft", size: "xs" },
-								() => "deprecated",
-							),
-						];
-					},
-				},
-			),
-	},
-	{
-		id: "links",
-		header: "More",
-		cell: ({ row }) => {
-			const UDropdownMenu = resolveComponent("UDropdownMenu");
-			const name = row.original.name;
-			const encodedName = encodeURIComponent(name);
-			const version =
-				selectedVersions.value[name] ?? row.original.version;
-			const encodedVersion = encodeURIComponent(version);
-
-			const items = [
-				{
-					label: "View package",
-					icon: "i-lucide-package-search",
-					onClick: () =>
-						window.open(
-							`https://npmx.dev/package/${encodedName}/v/${encodedVersion}`,
-							"_blank",
-						),
-				},
-				{
-					label: "View dependency graph",
-					icon: "i-lucide-network",
-					onClick: () =>
-						window.open(
-							`https://node-modules.dev/graph#install=${encodedName}@${encodedVersion}`,
-							"_blank",
-						),
-				},
-				{
-					label: "View size",
-					icon: "i-lucide-ruler",
-					onClick: () =>
-						window.open(
-							`https://pkg-size.dev/${encodedName}@${encodedVersion}`,
-							"_blank",
-						),
-				},
-			];
-
-			return h(
-				UDropdownMenu,
-				{
-					items: [items],
-					content: {
-						align: "start",
-						side: "bottom",
-					},
-				},
-				{
-					default: () =>
-						h(UButton, {
-							icon: "i-lucide-ellipsis-vertical",
-							color: "neutral",
-							variant: "ghost",
-							size: "xs",
-							square: true,
-						}),
-				},
-			);
-		},
-		meta: {
-			class: {
-				td: "w-12 text-right",
-			},
-		},
-	},
-	{
-		id: "actions",
-		header: "",
-		cell: ({ row }) =>
-			h(UButton, {
-				icon: "i-lucide-x",
-				color: "neutral",
-				variant: "ghost",
-				size: "xs",
-				square: true,
-				onClick: () => {
-					removeSelectedPackage(row.original.name);
-				},
-			}),
-		meta: {
-			class: {
-				td: "w-12 text-right",
-			},
-		},
-	},
-];
-
-async function searchPackages(term: string) {
-	const value = term.trim();
-	const requestId = ++searchRequestId;
-
-	if (noResultsTimer) {
-		clearTimeout(noResultsTimer);
-		noResultsTimer = null;
-	}
-	showNoResults.value = false;
-
-	if (value.length === 0) {
-		packageOptions.value = createPopularPackageOptions();
+	if (!value) {
+		searchRequestId += 1;
+		searchResults.value = [];
 		searchError.value = "";
+		searchRetryTerm.value = "";
+		searchAnnouncement.value = "";
+		hasSearched.value = false;
 		searchLoading.value = false;
+		searchInput.value?.focus();
 		return;
 	}
 
-	if (value.length < 3) {
-		searchLoading.value = true;
-		searchError.value = "";
-
-		try {
-			const packument = await getCachedPackument(value);
-			if (requestId !== searchRequestId) {
-				return;
-			}
-
-			packageOptions.value = [storePackumentData(packument)];
-			showNoResults.value = false;
-		} catch {
-			if (requestId !== searchRequestId) {
-				return;
-			}
-
-			packageOptions.value = [];
-			noResultsTimer = setTimeout(() => {
-				if (requestId === searchRequestId) {
-					showNoResults.value = true;
-				}
-			}, 250);
-		} finally {
-			if (requestId === searchRequestId) {
-				searchLoading.value = false;
-			}
-		}
-
-		return;
-	}
-
+	const requestId = ++searchRequestId;
 	searchLoading.value = true;
 	searchError.value = "";
+	searchResults.value = [];
+	searchAnnouncement.value = `Searching the npm registry for ${value}.`;
+	hasSearched.value = false;
+	searchRetryTerm.value = "";
+	lastSearchTerm.value = value;
 
 	try {
-		const results = await searchRegistryPackages(value);
-		if (requestId !== searchRequestId) {
-			return;
-		}
+		let results: SearchResult[] = [];
 
-		if (results.length) {
-			packageOptions.value = results.map((result) => {
-				const rawVersions = Object.entries(result.versions ?? {});
-				const latest =
-					result["dist-tags"]?.latest ??
-					rawVersions.at(-1)?.[0] ??
-					"latest";
-				const versions: PackageVersionOption[] = rawVersions
-					.sort(([left], [right]) => compareVersionsDesc(left, right))
-					.map(([version, meta]) => ({
-						label: version,
-						value: version,
-						description: meta.deprecated,
-						latest: version === latest,
-						deprecated: meta.deprecated,
-						sizeBytes: meta.dist?.unpackedSize,
-					}));
-
-				packageVersions.value[result.name] = versions.length
-					? versions
-					: [{ label: latest, value: latest, latest: true }];
-				packageLatest.value[result.name] = latest;
-				packageDescriptions.value[result.name] =
-					result.description ?? "";
-
-				return {
-					label: result.name,
-					value: result.name,
-					description: [
-						latest,
-						result.description ?? "",
-						`${versions.length} versions`,
-					]
-						.filter(Boolean)
-						.join(" · "),
-				};
-			});
-			showNoResults.value = false;
-		} else {
-			packageOptions.value = [];
-			noResultsTimer = setTimeout(() => {
-				if (requestId === searchRequestId) {
-					showNoResults.value = true;
+		if (value.length < 3) {
+			try {
+				results = [toSearchResult(await getPackument(value))];
+			} catch (cause) {
+				if (!isNotFoundError(cause)) {
+					throw cause;
 				}
-			}, 250);
+
+				results = [];
+			}
+		} else {
+			const packuments = await searchRegistryPackages(value);
+			results = packuments.map(toSearchResult);
 		}
-	} catch (error) {
+
 		if (requestId !== searchRequestId) {
 			return;
 		}
 
-		searchError.value =
-			error instanceof Error ? error.message : String(error);
+		searchResults.value = results;
+		searchAnnouncement.value =
+			results.length > 0
+				? `${results.length} package${
+						results.length === 1 ? "" : "s"
+					} found for ${value}.`
+				: `No packages found for ${value}.`;
+		hasSearched.value = true;
+	} catch (cause) {
+		if (requestId !== searchRequestId) {
+			return;
+		}
+
+		searchError.value = registryErrorMessage(cause);
+		searchRetryTerm.value = value;
+		searchAnnouncement.value = "";
 	} finally {
 		if (requestId === searchRequestId) {
 			searchLoading.value = false;
@@ -749,265 +403,1020 @@ async function searchPackages(term: string) {
 	}
 }
 
-watch(searchTerm, (term) => {
-	if (searchTimer) {
-		clearTimeout(searchTimer);
-	}
-
-	if (term.trim().length < 3) {
-		void searchPackages(term);
+async function addPackage(result: SearchResult) {
+	if (isSelected(result.name) || importing.value) {
 		return;
 	}
 
-	searchTimer = setTimeout(() => {
-		void searchPackages(term);
-	}, 300);
-});
+	selectedPackages.value = [
+		...selectedPackages.value,
+		{
+			name: result.name,
+			version: result.latest,
+			versions: result.versions,
+			description: result.description,
+			sizeBytes: result.sizeBytes,
+		},
+	];
+	selectionAnnouncement.value = `Added ${result.name} to the selected packages.`;
+
+	await nextTick();
+	const target = [
+		...(packageSection.value?.querySelectorAll<HTMLSelectElement>(
+			".version-select",
+		) ?? []),
+	].find((select) => select.dataset.packageName === result.name);
+	target?.focus();
+}
+
+async function addByName(name: string) {
+	if (isSelected(name) || addingPackage.value || importing.value) {
+		return;
+	}
+
+	addingPackage.value = name;
+	searchError.value = "";
+	searchRetryTerm.value = "";
+
+	try {
+		await addPackage(toSearchResult(await getPackument(name)));
+	} catch (cause) {
+		searchError.value = `Could not load ${name}: ${registryErrorMessage(cause)}`;
+	} finally {
+		addingPackage.value = "";
+	}
+}
+
+async function removePackage(name: string) {
+	const index = selectedPackages.value.findIndex((pkg) => pkg.name === name);
+
+	if (index === -1) {
+		return;
+	}
+
+	selectedPackages.value = selectedPackages.value.filter(
+		(pkg) => pkg.name !== name,
+	);
+	selectionAnnouncement.value = `Removed ${name} from the selected packages.`;
+
+	await nextTick();
+	const selects = [
+		...(packageSection.value?.querySelectorAll<HTMLSelectElement>(
+			".version-select",
+		) ?? []),
+	];
+	const target =
+		selects[Math.min(index, selects.length - 1)] ?? searchInput.value;
+	target?.focus();
+}
+
+function updateSelectedPackageVersion(name: string, version: string) {
+	selectedPackages.value = selectedPackages.value.map((pkg) =>
+		pkg.name === name
+			? {
+					...pkg,
+					version,
+					sizeBytes: getVersionOption(pkg, version)?.sizeBytes,
+				}
+			: pkg,
+	);
+}
+
+function handleVersionChange(name: string, event: Event) {
+	const select = event.target as HTMLSelectElement;
+	updateSelectedPackageVersion(name, select.value);
+}
+
+async function importPackageJsonText(text: string, requestId: number) {
+	let manifest: {
+		name?: string;
+		version?: string;
+		dependencies?: Record<string, string>;
+	};
+
+	try {
+		manifest = JSON.parse(text) as typeof manifest;
+	} catch {
+		throw new Error("The file is not valid JSON.");
+	}
+
+	const dependencies = Object.entries(manifest.dependencies ?? {});
+
+	if (!dependencies.length) {
+		throw new Error("The package.json does not contain any dependencies.");
+	}
+
+	const importedName = manifest.name ?? bundleName.value;
+	const importedVersion = manifest.version ?? bundleVersion.value;
+
+	const settled = await Promise.allSettled(
+		dependencies.map(async ([name, version]) => {
+			const data = packageData(await getPackument(name));
+			const exact = data.versions.find(
+				(option) => option.value === version,
+			);
+			const versions = exact
+				? data.versions
+				: [
+						{
+							value: version,
+							label: `${version} (range)`,
+						},
+						...data.versions,
+					];
+
+			return {
+				name,
+				version,
+				versions,
+				description: data.description,
+				sizeBytes: exact?.sizeBytes,
+			} satisfies SelectedPackage;
+		}),
+	);
+
+	const imported: SelectedPackage[] = [];
+	const failed: string[] = [];
+
+	settled.forEach((result, index) => {
+		if (result.status === "fulfilled") {
+			imported.push(result.value);
+		} else {
+			failed.push(dependencies[index][0]);
+		}
+	});
+
+	if (requestId !== importRequestId) {
+		return;
+	}
+
+	if (!imported.length) {
+		throw new Error(
+			`Could not load any of the listed packages: ${failed.join(", ")}.`,
+		);
+	}
+
+	bundleName.value = importedName;
+	bundleVersion.value = importedVersion;
+	bundleNameTouched.value = true;
+	bundleVersionTouched.value = true;
+	bundleNameError.value = "";
+	bundleVersionError.value = "";
+	selectedPackages.value = imported;
+	searchRequestId += 1;
+	searchLoading.value = false;
+	searchError.value = "";
+	searchRetryTerm.value = "";
+	searchAnnouncement.value = "";
+	searchTerm.value = "";
+	lastSearchTerm.value = "";
+	searchResults.value = [];
+	hasSearched.value = false;
+
+	const exactRequired =
+		imported.length === 1 &&
+		bundleMethod.value === "slim-bundle" &&
+		!EXACT_VERSION_REGEX.test(imported[0]?.version ?? "");
+	selectionAnnouncement.value = `Imported ${imported.length} package${
+		imported.length === 1 ? "" : "s"
+	}.${exactRequired ? " Choose an exact version to start bundling." : ""}`;
+
+	if (failed.length) {
+		importWarning.value = `Imported ${imported.length} package(s). Could not load ${failed.join(", ")}.`;
+	}
+}
+
+function openPackageJsonFile() {
+	if (!importing.value && !addingPackage.value) {
+		packageJsonFileInput.value?.click();
+	}
+}
+
+async function handlePackageJsonFileChange(event: Event) {
+	const input = event.target as HTMLInputElement;
+	const file = input.files?.[0];
+	if (!file) {
+		return;
+	}
+
+	if (addingPackage.value) {
+		input.value = "";
+		return;
+	}
+
+	const requestId = ++importRequestId;
+	importing.value = true;
+	importError.value = "";
+	importWarning.value = "";
+
+	try {
+		await importPackageJsonText(await file.text(), requestId);
+	} catch (cause) {
+		if (requestId === importRequestId) {
+			importError.value = `Import failed. ${errorMessage(cause)}`;
+		}
+	} finally {
+		if (requestId === importRequestId) {
+			importing.value = false;
+		}
+		input.value = "";
+	}
+}
+
+function exportPackageJson() {
+	if (importing.value || addingPackage.value) {
+		return;
+	}
+
+	if (!validateBundleFields()) {
+		return;
+	}
+
+	const blob = new Blob([`${packageJsonExport.value}\n`], {
+		type: "application/json",
+	});
+	const url = URL.createObjectURL(blob);
+	const link = document.createElement("a");
+	link.href = url;
+	link.download = `${sanitizePackageName(
+		bundleName.value || bundleDefaults.value.name || "packy-bundle",
+	)}.package.json`;
+	document.body.append(link);
+	link.click();
+	link.remove();
+	setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function goNext() {
+	if (!canBundle.value) {
+		return;
+	}
+
+	if (!validateBundleFields()) {
+		return;
+	}
+
+	const singlePackage = isSingleSlim.value
+		? selectedPackages.value[0]
+		: undefined;
+
+	emit("advance", {
+		packages: selectedPackages.value.map(({ name, version }) => ({
+			name,
+			version,
+		})),
+		bundleName:
+			singlePackage?.name ||
+			bundleName.value ||
+			bundleDefaults.value.name,
+		bundleVersion:
+			singlePackage?.version ||
+			bundleVersion.value ||
+			bundleDefaults.value.version,
+		bundleMethod: bundleMethod.value,
+	});
+}
+
+function bundleNameValidation() {
+	if (isSingleSlim.value) {
+		return "";
+	}
+
+	const name = bundleName.value.trim();
+
+	if (!name) {
+		return "Enter a bundle name.";
+	}
+
+	if (!PACKAGE_NAME_REGEX.test(name)) {
+		return "Use a lowercase npm name: letters, numbers, dots, hyphens, underscores, or one @scope/.";
+	}
+
+	return "";
+}
+
+function bundleVersionValidation() {
+	if (isSingleSlim.value) {
+		return "";
+	}
+
+	const version = bundleVersion.value.trim();
+
+	if (!version) {
+		return "Enter a bundle version.";
+	}
+
+	if (!EXACT_VERSION_REGEX.test(version)) {
+		return "Use a semantic version, for example 1.0.0.";
+	}
+
+	return "";
+}
+
+function validateBundleFields() {
+	const nameValid = bundleNameInput.value?.checkValidity() ?? true;
+	const versionValid = bundleVersionInput.value?.checkValidity() ?? true;
+
+	bundleNameError.value = nameValid ? "" : bundleNameValidation();
+	bundleVersionError.value = versionValid ? "" : bundleVersionValidation();
+
+	if (bundleNameError.value) {
+		bundleNameInput.value?.focus();
+		return false;
+	}
+
+	if (bundleVersionError.value) {
+		bundleVersionInput.value?.focus();
+		return false;
+	}
+
+	bundleName.value = bundleName.value.trim();
+	bundleVersion.value = bundleVersion.value.trim();
+	return true;
+}
+
+function handleBundleNameInput() {
+	bundleNameTouched.value = true;
+	bundleNameError.value = "";
+}
+
+function handleBundleVersionInput() {
+	bundleVersionTouched.value = true;
+	bundleVersionError.value = "";
+}
+
+function handleBundleNameBlur() {
+	if (bundleNameTouched.value) {
+		bundleNameError.value = bundleNameValidation();
+	}
+}
+
+function handleBundleVersionBlur() {
+	if (bundleVersionTouched.value) {
+		bundleVersionError.value = bundleVersionValidation();
+	}
+}
+
+function retrySearch() {
+	searchTerm.value = searchRetryTerm.value;
+	void runSearch();
+	void nextTick().then(() => searchInput.value?.focus());
+}
 
 function handleShortcut(event: KeyboardEvent) {
 	if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
 		event.preventDefault();
 		goNext();
-		return;
-	}
-
-	const target = event.target as HTMLElement | null;
-	const isEditing = Boolean(
-		target &&
-		(target.tagName === "INPUT" ||
-			target.tagName === "TEXTAREA" ||
-			target.isContentEditable),
-	);
-	if (
-		isEditing &&
-		!searchTermValue.value &&
-		(event.key === "Backspace" || event.key === "Delete") &&
-		selectedPackages.value.length
-	) {
-		event.preventDefault();
-		removeSelectedPackage(selectedPackages.value?.at(-1)?.name || "");
 	}
 }
-
-onBeforeUnmount(() => {
-	if (searchTimer) {
-		clearTimeout(searchTimer);
-	}
-	if (noResultsTimer) {
-		clearTimeout(noResultsTimer);
-	}
-	window.removeEventListener("keydown", handleShortcut);
-});
 
 onMounted(() => {
 	window.addEventListener("keydown", handleShortcut);
-	void loadPopularPackages();
 });
 
-function goNext() {
-	if (canAdvance.value) {
-		emit("advance", {
-			packages: selectedPackages.value.map(({ name, version }) => ({
-				name,
-				version,
-			})),
-			bundleName: bundleName.value || bundleDefaults.value.name,
-			bundleVersion: bundleVersion.value || bundleDefaults.value.version,
-			bundleMethod: bundleMethod.value,
-		});
-	}
-}
-
-import type { DropdownMenuItem } from "@nuxt/ui";
-
-const items = computed<DropdownMenuItem[][]>(() => [
-	[
-		{
-			label: "Import package.json",
-			icon: "i-lucide:file-import",
-			onClick: () => {
-				packageJsonFileInput.value?.click();
-			},
-		},
-	],
-	[
-		{
-			label: "Export package.json",
-			icon: "i-lucide:file-export",
-			onClick: exportPackageJson,
-			disabled: selectedPackages.value.length === 0,
-		},
-	],
-]);
+onBeforeUnmount(() => {
+	window.removeEventListener("keydown", handleShortcut);
+});
 </script>
 
 <template>
-	<UCard variant="outline">
-		<template #header>
-			<div
-				class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"
-			>
-				<div>
-					<h2 class="text-xl font-semibold">Pick packages</h2>
-				</div>
-				<div class="flex">
-					<UDropdownMenu
-						:items="items"
-						:content="{
-							align: 'end',
-							side: 'bottom',
-						}"
-					>
-						<UButton
-							color="neutral"
-							variant="ghost"
-							icon="i-lucide:ellipsis-vertical"
-						/>
-					</UDropdownMenu>
+	<div class="t128n-stack">
+		<div
+			v-if="!isolationAvailable"
+			class="notice notice--error"
+			role="alert"
+		>
+			<p>
+				<strong>Bundling is unavailable.</strong> WebContainers need
+				cross-origin isolation. Serve packy with COOP and COEP headers,
+				then reload.
+			</p>
+			<p>You can still prepare the selection.</p>
+		</div>
+		<div
+			v-else-if="runtimeError"
+			class="notice notice--warning"
+			role="status"
+		>
+			<p><strong>Runtime error.</strong> {{ runtimeError }}</p>
+			<p>
+				Starting a bundle retries the in-browser runtime. Reload the
+				page if it keeps failing.
+			</p>
+		</div>
 
-					<input
-						ref="packageJsonFileInput"
-						type="file"
-						accept="application/json,.json"
-						class="hidden"
-						@change="handlePackageJsonFileChange"
-					/>
-				</div>
-			</div>
-		</template>
-
-		<div class="space-y-5">
-			<div class="grid gap-4 sm:grid-cols-2">
-				<div class="space-y-2">
-					<label class="text-sm font-medium">Bundle name</label>
-					<UInput
-						v-model="bundleName"
-						placeholder="My bundle"
-						class="w-full"
-						:disabled="
-							bundleMethod === 'slim-bundle' &&
-							selectedPackages.length === 1
-						"
-						@update:model-value="
-							() => {
-								bundleNameTouched = true;
-							}
-						"
-					/>
-				</div>
-				<div class="space-y-2">
-					<label class="text-sm font-medium">Bundle version</label>
-					<UInput
-						v-model="bundleVersion"
-						placeholder="1.0.0"
-						class="w-full"
-						:disabled="
-							bundleMethod === 'slim-bundle' &&
-							selectedPackages.length === 1
-						"
-						@update:model-value="
-							() => {
-								bundleVersionTouched = true;
-							}
-						"
-					/>
-				</div>
-			</div>
-
-			<div class="space-y-2">
-				<label class="text-sm font-medium">Bundling method</label>
-				<URadioGroup
-					v-model="bundleMethod"
-					class="w-full"
-					:items="[
-						{
-							value: 'slim-bundle',
-							label: 'Slim bundle (default)',
-							description:
-								selectedPackages.length === 1
-									? `Packs ${selectedPackages[0].name} directly with its dependencies.`
-									: 'Packs all packages into a portable bundle.',
-						},
-						{
-							value: 'full-bundle',
-							label: 'Full bundle',
-							description:
-								'Always wraps packages in a new bundle container.',
-						},
-					]"
-				/>
-			</div>
-
-			<div class="space-y-2">
-				<label class="text-sm font-medium">Search packages</label>
-				<UInputMenu
-					v-model="pendingPackage"
-					v-model:search-term="searchTerm"
-					:items="packageOptions"
-					value-key="value"
-					label-key="label"
-					placeholder="Pick one package"
-					class="w-full"
-					:loading="searchLoading"
-					:create-item="false"
-					:content="{ hideWhenEmpty: false }"
-					:ignore-filter="true"
-					:reset-search-term-on-blur="false"
-					aria-label="Search npm packages"
-					@keydown.enter.prevent
-					@update:model-value="addSelectedPackage"
-					@update:open="(open: boolean) => open && searchPackages(searchTerm)"
-				>
-					<template #leading>
-						<UIcon
-							:name="inputIcon"
-							class="text-muted shrink-0"
-							:class="searchLoading ? 'animate-spin' : ''"
-						/>
-					</template>
-					<template #empty>
-						<div class="text-muted min-h-10 px-3 py-2 text-sm">
-							<p>{{ searchHint }}</p>
-						</div>
-					</template>
-				</UInputMenu>
-				<div
-					v-if="searchError"
-					class="border-error/30 bg-error/10 text-error mt-1 rounded-md border px-3 py-2 text-xs"
-				>
-					{{ searchError }} Try a different package name or import a
-					package.json.
-				</div>
-				<p class="text-muted mt-2 text-xs">
-					<UKbd value="meta" /> + <UKbd value="enter" /> continues.
-					<UKbd value="backspace" /> removes the last selected package
-					when the search field is empty.
+		<section class="settings" aria-labelledby="settings-title">
+			<div class="section-heading">
+				<h2 id="settings-title" class="headline-md">Bundle settings</h2>
+				<p>
+					Both fields are required for full bundles. Slim bundles
+					derive them from the package.
 				</p>
 			</div>
 
-			<div class="mb-3 flex items-center justify-between gap-3">
-				<p class="font-medium">Selected packages</p>
-				<UBadge color="primary" variant="soft">{{
-					selectedPackages.length
-				}}</UBadge>
+			<p
+				v-if="bundleErrorCount"
+				id="settings-error-summary"
+				class="field-error"
+				role="alert"
+			>
+				{{ bundleErrorCount }}
+				{{
+					bundleErrorCount === 1
+						? "field needs attention."
+						: "fields need attention."
+				}}
+			</p>
+
+			<form
+				id="bundle-settings"
+				class="t128n-form-grid"
+				novalidate
+				@submit.prevent="goNext"
+			>
+				<div class="field">
+					<label for="bundle-name">Bundle name</label>
+					<input
+						id="bundle-name"
+						ref="bundleNameInput"
+						v-model="bundleName"
+						class="input"
+						type="text"
+						placeholder="my-bundle"
+						autocomplete="off"
+						:required="!isSingleSlim"
+						:pattern="
+							isSingleSlim
+								? undefined
+								: '(@[a-z0-9._\\-]+/)?[a-z0-9._\\-]+'
+						"
+						:readonly="isSingleSlim"
+						:aria-invalid="Boolean(bundleNameError)"
+						:aria-describedby="
+							bundleNameError
+								? 'settings-error-summary bundle-name-help bundle-name-error'
+								: 'bundle-name-help'
+						"
+						@input="handleBundleNameInput"
+						@blur="handleBundleNameBlur"
+					/>
+					<p id="bundle-name-help" class="hint">
+						{{
+							isSingleSlim
+								? "Slim single-package bundles use the package name."
+								: "Used for the tarball and the generated package.json."
+						}}
+					</p>
+					<p
+						v-if="bundleNameError"
+						id="bundle-name-error"
+						class="field-error"
+					>
+						{{ bundleNameError }}
+					</p>
+				</div>
+
+				<div class="field">
+					<label for="bundle-version">Bundle version</label>
+					<input
+						id="bundle-version"
+						ref="bundleVersionInput"
+						v-model="bundleVersion"
+						class="input"
+						type="text"
+						placeholder="1.0.0"
+						autocomplete="off"
+						:required="!isSingleSlim"
+						:pattern="
+							isSingleSlim
+								? undefined
+								: '[0-9]+\\.[0-9]+\\.[0-9]+([\\-+][0-9A-Za-z.\\-]+)?'
+						"
+						:readonly="isSingleSlim"
+						:aria-invalid="Boolean(bundleVersionError)"
+						:aria-describedby="
+							bundleVersionError
+								? 'settings-error-summary bundle-version-help bundle-version-error'
+								: 'bundle-version-help'
+						"
+						@input="handleBundleVersionInput"
+						@blur="handleBundleVersionBlur"
+					/>
+					<p id="bundle-version-help" class="hint">
+						{{
+							isSingleSlim
+								? "Slim single-package bundles use the package name and exact version."
+								: "Used for the tarball and the generated package.json."
+						}}
+					</p>
+					<p
+						v-if="bundleVersionError"
+						id="bundle-version-error"
+						class="field-error"
+					>
+						{{ bundleVersionError }}
+					</p>
+				</div>
+
+				<fieldset class="fieldset t128n-form-grid__wide">
+					<legend>Bundling method</legend>
+
+					<label class="choice">
+						<input
+							v-model="bundleMethod"
+							type="radio"
+							name="bundle-method"
+							value="slim-bundle"
+						/>
+						<span class="choice__text">
+							<span class="choice__title"
+								>Slim bundle (default)</span
+							>
+							<span class="hint">
+								{{
+									selectedPackages.length === 1
+										? `Packs ${selectedPackages[0]?.name} directly with its dependencies.`
+										: "Packs all packages into a portable bundle."
+								}}
+							</span>
+						</span>
+					</label>
+
+					<label class="choice">
+						<input
+							v-model="bundleMethod"
+							type="radio"
+							name="bundle-method"
+							value="full-bundle"
+						/>
+						<span class="choice__text">
+							<span class="choice__title">Full bundle</span>
+							<span class="hint"
+								>Always wraps packages in a new bundle
+								container.</span
+							>
+						</span>
+					</label>
+				</fieldset>
+			</form>
+		</section>
+
+		<section
+			ref="packageSection"
+			class="t128n-register"
+			aria-labelledby="selected-title"
+		>
+			<header class="t128n-register__header">
+				<div class="section-heading">
+					<h2 id="selected-title" class="headline-md">
+						Selected packages
+					</h2>
+				</div>
+				<p class="hint">
+					Choose exact versions here. Package names and versions are
+					written to the bundle manifest.
+				</p>
+				<p class="sr-only" role="status" aria-live="polite">
+					{{ selectionAnnouncement }}
+				</p>
+			</header>
+
+			<div class="t128n-register__toolbar">
+				<div class="toolbar">
+					<p class="hint" role="status" aria-live="polite">
+						{{
+							importing
+								? "Importing package.json…"
+								: "Search the npm registry, or import an existing package.json."
+						}}
+					</p>
+					<div class="toolbar__group">
+						<button
+							class="button button--secondary"
+							type="button"
+							:aria-disabled="
+								importing || addingPackage !== ''
+									? 'true'
+									: undefined
+							"
+							@title="
+								addingPackage
+									? 'Wait for the package to finish loading'
+									: undefined
+							"
+							@click="openPackageJsonFile"
+						>
+							{{
+								importing ? "Importing…" : "Import package.json"
+							}}
+						</button>
+						<button
+							class="button button--secondary"
+							type="button"
+							:disabled="
+								!selectedPackages.length ||
+								importing ||
+								addingPackage !== '' ||
+								slimVersionNeedsExact
+							"
+							:title="
+								!selectedPackages.length
+									? 'Select at least one package to export'
+									: importing
+										? 'Wait for the package.json import to finish'
+										: addingPackage
+											? 'Wait for the package to finish loading'
+											: slimVersionNeedsExact
+												? 'Choose an exact version before exporting'
+												: 'Download a package.json for this bundle'
+							"
+							@click="exportPackageJson"
+						>
+							Export package.json
+						</button>
+						<input
+							ref="packageJsonFileInput"
+							type="file"
+							accept="application/json,.json"
+							class="sr-only"
+							tabindex="-1"
+							aria-hidden="true"
+							@change="handlePackageJsonFileChange"
+						/>
+					</div>
+				</div>
+
+				<div class="search-panel">
+					<form class="search-row" @submit.prevent="runSearch">
+						<div class="field">
+							<label for="package-search"
+								>Search npm packages</label
+							>
+							<input
+								id="package-search"
+								ref="searchInput"
+								v-model="searchTerm"
+								class="input"
+								type="search"
+								placeholder="e.g. zod"
+								autocomplete="off"
+							/>
+						</div>
+						<button
+							class="button button--secondary"
+							type="submit"
+							:aria-disabled="importing ? 'true' : undefined"
+						>
+							Search
+						</button>
+					</form>
+
+					<div
+						class="suggestions"
+						role="group"
+						aria-label="Popular packages"
+					>
+						<span class="suggestions__label">Popular</span>
+						<button
+							v-for="name in popularPackages"
+							:key="name"
+							class="button button--secondary"
+							type="button"
+							:aria-disabled="
+								isSelected(name) ||
+								addingPackage !== '' ||
+								importing
+									? 'true'
+									: undefined
+							"
+							@click="addByName(name)"
+						>
+							{{ name
+							}}<span v-if="isSelected(name)" class="sr-only">
+								(already selected)</span
+							>
+						</button>
+					</div>
+
+					<p
+						v-if="addingPackage"
+						class="hint"
+						role="status"
+						aria-live="polite"
+					>
+						Loading {{ addingPackage }} from the npm registry…
+					</p>
+
+					<p class="sr-only" role="status" aria-live="polite">
+						{{ searchAnnouncement }}
+					</p>
+					<div v-if="searchLoading" class="empty-state">
+						Searching the npm registry…
+					</div>
+					<div
+						v-else-if="hasSearched && !searchResults.length"
+						class="empty-state"
+					>
+						No packages found for “{{ lastSearchTerm }}”. Try
+						another name.
+					</div>
+					<ul
+						v-else-if="searchResults.length"
+						class="result-list"
+						aria-label="Search results"
+					>
+						<li
+							v-for="result in searchResults"
+							:key="result.name"
+							class="result"
+						>
+							<div class="result__main">
+								<div class="result__title">
+									<span class="result__name">{{
+										result.name
+									}}</span>
+									<span class="result__meta"
+										>latest {{ result.latest }}</span
+									>
+								</div>
+								<p
+									v-if="result.description"
+									class="result__description"
+								>
+									{{ result.description }}
+								</p>
+								<p class="result__meta">
+									{{ result.versionCount }} versions &middot;
+									{{ formatBytes(result.sizeBytes) }}
+								</p>
+							</div>
+							<span
+								v-if="isSelected(result.name)"
+								class="status status--success"
+								>Added</span
+							>
+							<button
+								v-else
+								class="button button--secondary"
+								type="button"
+								:disabled="addingPackage !== '' || importing"
+								:aria-label="`Add ${result.name} at ${result.latest}`"
+								@click="addPackage(result)"
+							>
+								Add
+							</button>
+						</li>
+					</ul>
+
+					<div
+						v-if="searchError"
+						class="notice notice--error"
+						role="alert"
+					>
+						<p>
+							<strong>npm registry request failed.</strong>
+							{{ searchError }} Try again or import a
+							package.json.
+						</p>
+					</div>
+					<button
+						v-if="searchError && searchRetryTerm"
+						class="button button--secondary"
+						type="button"
+						@click="retrySearch"
+					>
+						Retry search
+					</button>
+
+					<div
+						v-if="importWarning"
+						class="notice notice--warning"
+						role="status"
+					>
+						<p>
+							<span class="status status--warning"
+								>Partial import</span
+							>
+						</p>
+						<p>{{ importWarning }}</p>
+					</div>
+
+					<div
+						v-if="importError"
+						class="notice notice--error"
+						role="alert"
+					>
+						<p>{{ importError }}</p>
+					</div>
+				</div>
 			</div>
 
-			<UTable
-				:data="selectedPackages"
-				:columns="packageColumns"
-				class="border-default overflow-hidden rounded-lg border"
-			/>
-		</div>
+			<div class="t128n-register__body">
+				<div
+					v-if="!selectedPackages.length"
+					class="empty-state"
+					role="status"
+				>
+					No packages selected. Search for a package above or import a
+					package.json.
+				</div>
+				<div
+					v-else
+					class="t128n-table-scroll t128n-table-scroll--pin-first table-wrap"
+					tabindex="0"
+					role="region"
+					aria-label="Selected packages table"
+				>
+					<table>
+						<caption class="sr-only">
+							Selected packages, with version, unpacked size,
+							links, and row actions
+						</caption>
+						<thead>
+							<tr>
+								<th scope="col">Package</th>
+								<th scope="col">Version</th>
+								<th scope="col" class="numeric">
+									Unpacked size
+								</th>
+								<th scope="col">Links</th>
+								<th scope="col">
+									<span class="sr-only">Actions</span>
+								</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr v-for="pkg in selectedPackages" :key="pkg.name">
+								<th scope="row">
+									<div class="package-cell">
+										<span class="package-name">{{
+											pkg.name
+										}}</span>
+										<span
+											v-if="pkg.description"
+											class="package-description"
+											>{{ pkg.description }}</span
+										>
+									</div>
+								</th>
+								<td>
+									<div class="cell-stack">
+										<select
+											class="select version-select"
+											:value="pkg.version"
+											:data-package-name="pkg.name"
+											:disabled="importing"
+											:aria-label="`Version for ${pkg.name}`"
+											@change="
+												handleVersionChange(
+													pkg.name,
+													$event,
+												)
+											"
+										>
+											<option
+												v-for="option in pkg.versions"
+												:key="option.value"
+												:value="option.value"
+											>
+												{{ option.label
+												}}{{
+													option.latest
+														? " (latest)"
+														: ""
+												}}{{
+													option.deprecated
+														? " (deprecated)"
+														: ""
+												}}
+											</option>
+										</select>
+										<span
+											v-if="
+												selectedVersionOption(pkg)
+													?.deprecated
+											"
+											class="status status--warning"
+											:title="
+												selectedVersionOption(pkg)
+													?.deprecated
+											"
+											>Deprecated</span
+										>
+										<span
+											v-if="slimVersionNeedsExact"
+											class="status status--warning"
+											title="Slim single-package bundles need an exact version. Choose one from the version list."
+											>Choose exact</span
+										>
+									</div>
+								</td>
+								<td class="numeric">
+									{{ formatBytes(selectedSize(pkg)) }}
+								</td>
+								<td>
+									<details class="row-details">
+										<summary
+											:aria-label="`Links for ${pkg.name}`"
+										>
+											Links
+										</summary>
+										<ul>
+											<li>
+												<a
+													:href="`https://npmx.dev/package/${encodeURIComponent(pkg.name)}/v/${encodeURIComponent(pkg.version)}`"
+													target="_blank"
+													rel="noreferrer"
+													:aria-label="`View on npmx: ${pkg.name} ${pkg.version}`"
+													>View on npmx</a
+												>
+											</li>
+											<li>
+												<a
+													:href="`https://node-modules.dev/graph#install=${encodeURIComponent(pkg.name)}@${encodeURIComponent(pkg.version)}`"
+													target="_blank"
+													rel="noreferrer"
+													:aria-label="`View dependency graph: ${pkg.name} ${pkg.version}`"
+													>View dependency graph</a
+												>
+											</li>
+											<li>
+												<a
+													:href="`https://pkg-size.dev/${encodeURIComponent(pkg.name)}@${encodeURIComponent(pkg.version)}`"
+													target="_blank"
+													rel="noreferrer"
+													:aria-label="`View bundle size: ${pkg.name} ${pkg.version}`"
+													>View bundle size</a
+												>
+											</li>
+										</ul>
+									</details>
+								</td>
+								<td>
+									<div class="cell-actions">
+										<button
+											class="button button--secondary"
+											type="button"
+											:disabled="importing"
+											:aria-label="`Remove ${pkg.name}`"
+											@click="removePackage(pkg.name)"
+										>
+											Remove
+										</button>
+									</div>
+								</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+			</div>
 
-		<div class="mt-4 flex justify-end">
-			<UButton
-				color="primary"
-				icon="i-lucide-arrow-right"
-				:disabled="!canAdvance"
-				@click="goNext"
-			>
-				Start bundling
-			</UButton>
-		</div>
-	</UCard>
+			<footer class="t128n-register__footer">
+				<div class="toolbar">
+					<p class="hint">
+						{{ selectedPackages.length }}
+						{{
+							selectedPackages.length === 1
+								? "package"
+								: "packages"
+						}}
+						&middot; {{ methodLabel }}
+						<template v-if="canBundle">
+							&middot; <kbd>Ctrl</kbd>/<kbd>⌘</kbd> +
+							<kbd>Enter</kbd> starts bundling.
+						</template>
+					</p>
+					<div class="toolbar__group">
+						<p v-if="!isolationAvailable" class="hint">
+							Bundling needs cross-origin isolation.
+						</p>
+						<p v-else-if="slimVersionNeedsExact" class="hint">
+							Choose an exact version for the single package.
+						</p>
+						<button
+							class="button button--primary"
+							type="submit"
+							form="bundle-settings"
+							:disabled="!canBundle"
+							:title="
+								!canAdvance
+									? 'Select at least one package'
+									: !isolationAvailable
+										? 'WebContainers need cross-origin isolation'
+										: slimVersionNeedsExact
+											? 'Choose an exact version for the single package'
+											: importing
+												? 'Wait for the package.json import to finish'
+												: addingPackage
+													? 'Wait for the package to finish loading'
+													: undefined
+							"
+						>
+							Start bundling
+						</button>
+					</div>
+				</div>
+			</footer>
+		</section>
+	</div>
 </template>

@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount } from "vue";
+import { computed, onBeforeUnmount, ref } from "vue";
+
+import type { BundleMethod, BundleResult } from "~/lib/packy";
+import { formatBytes } from "~/lib/packy";
 
 const props = defineProps<{
-	bundleName: string;
-	bundleVersion: string;
-	filename: string;
-	url: string;
-	output: string;
+	result: BundleResult;
+	bundleMethod: BundleMethod;
 }>();
 
 const emit = defineEmits<{
@@ -14,84 +14,152 @@ const emit = defineEmits<{
 	packMorePackages: [];
 }>();
 
+const copied = ref(false);
+const copyFailed = ref(false);
+let copyTimer: ReturnType<typeof setTimeout> | null = null;
+
 const downloadLabel = computed(
 	() =>
-		props.filename ||
-		`${props.bundleName || "bundle"}-${props.bundleVersion || "0.0.0"}.tgz`,
+		props.result.filename ||
+		`${props.result.name}-${props.result.version}.tgz`,
 );
-// Updated to a sensible default local directory
+
+const methodLabel = computed(() =>
+	props.bundleMethod === "slim-bundle" ? "Slim bundle" : "Full bundle",
+);
+
 const manualInstallCommand = computed(
 	() => `npm install ./packages/${downloadLabel.value}`,
 );
 
-const copyToClipboard = async (text: string) => {
+function resetCopyState() {
+	copied.value = false;
+	copyFailed.value = false;
+
+	if (copyTimer) {
+		clearTimeout(copyTimer);
+	}
+}
+
+async function copyToClipboard(text: string) {
+	resetCopyState();
+
 	try {
 		await navigator.clipboard.writeText(text);
-	} catch (err) {
-		console.error("Failed to copy:", err);
+		copied.value = true;
+		copyTimer = setTimeout(resetCopyState, 4000);
+	} catch {
+		copyFailed.value = true;
 	}
-};
+}
 
 onBeforeUnmount(() => {
-	if (props.url) emit("disposeUrl", props.url);
+	if (copyTimer) {
+		clearTimeout(copyTimer);
+	}
+
+	if (props.result.url) {
+		emit("disposeUrl", props.result.url);
+	}
 });
 </script>
 
 <template>
-	<UCard>
-		<template #header>
-			<div class="flex items-center gap-2">
-				<h2 class="text-xl font-semibold">Install Bundle</h2>
+	<section class="t128n-record" aria-labelledby="download-title">
+		<aside class="t128n-record__meta">
+			<div class="record-identity">
+				<h2 class="headline-md">{{ result.name }}</h2>
+				<p class="mono">{{ result.version }}</p>
 			</div>
-		</template>
 
-		<div class="space-y-8">
-			<section>
-				<h3 class="mb-1 text-lg font-medium">1. Download</h3>
-				<p class="mb-4 text-sm text-gray-500 dark:text-gray-400">
-					Save the generated archive to your local environment.
-				</p>
-				<UButton
-					as="a"
-					color="primary"
-					target="_self"
-					icon="i-lucide-download"
-					:href="url"
+			<dl class="key-value">
+				<div>
+					<dt>Method</dt>
+					<dd>{{ methodLabel }}</dd>
+				</div>
+				<div>
+					<dt>Archive</dt>
+					<dd class="mono">{{ downloadLabel }}</dd>
+				</div>
+				<div>
+					<dt>Archive size</dt>
+					<dd class="numeric">{{ formatBytes(result.size) }}</dd>
+				</div>
+			</dl>
+		</aside>
+
+		<div class="t128n-record__body">
+			<header class="record-header">
+				<div>
+					<h2 id="download-title" class="headline-md">
+						Bundle ready
+					</h2>
+					<p>
+						Download the archive, then install it in the offline
+						environment.
+					</p>
+				</div>
+				<span class="status status--success">Complete</span>
+			</header>
+
+			<div class="actions">
+				<a
+					v-if="result.url"
+					class="button button--primary"
+					:href="result.url"
 					:download="downloadLabel"
-					:disabled="!url"
 				>
 					Download {{ downloadLabel }}
-				</UButton>
-			</section>
-
-			<hr class="border-gray-200 dark:border-gray-800" />
-
-			<section>
-				<h3 class="mb-1 text-lg font-medium">2. Install</h3>
-				<p class="mb-4 text-sm text-gray-500 dark:text-gray-400">
-					Place the archive in a dedicated local directory (e.g.,
-					<code class="rounded bg-gray-100 px-1 dark:bg-gray-800"
-						>./packages</code
-					>) and install it via npm.
-				</p>
-
-				<div
-					class="mb-4 flex items-center justify-between gap-4 rounded-md border border-gray-200 bg-gray-100 p-3 dark:border-gray-800 dark:bg-gray-900"
+				</a>
+				<span v-else class="button button--primary" aria-disabled="true"
+					>Archive unavailable</span
 				>
-					<code
-						class="overflow-x-auto font-mono text-sm whitespace-nowrap text-gray-800 dark:text-gray-200"
-					>
-						{{ manualInstallCommand }}
-					</code>
-					<UButton
-						icon="i-lucide-copy"
-						color="neutral"
-						variant="ghost"
-						@click="copyToClipboard(manualInstallCommand)"
-						aria-label="Copy install command"
-					/>
+				<button
+					class="button button--secondary"
+					type="button"
+					@click="emit('packMorePackages')"
+				>
+					Start another bundle
+				</button>
+			</div>
+
+			<section class="log-section" aria-labelledby="install-title">
+				<div class="section-heading">
+					<h2 id="install-title" class="headline-md">Install</h2>
+					<p>
+						Place the archive in a local packages directory, then
+						install it with npm.
+					</p>
 				</div>
+
+				<div class="code-row">
+					<pre class="code-block">{{ manualInstallCommand }}</pre>
+					<button
+						class="button button--secondary"
+						type="button"
+						@click="copyToClipboard(manualInstallCommand)"
+					>
+						Copy command
+					</button>
+				</div>
+
+				<p class="hint" role="status" aria-live="polite">
+					<span v-if="copied">Copied install command.</span>
+					<span v-else-if="copyFailed"
+						>Could not copy. Select the command and copy it
+						manually.</span
+					>
+					<span v-else
+						>The command assumes the archive is saved in
+						<code>./packages</code>.</span
+					>
+				</p>
 			</section>
+
+			<details v-if="result.output" class="row-details">
+				<summary>Show build log</summary>
+				<pre class="code-block" tabindex="0">{{ result.output }}</pre>
+			</details>
 		</div>
-	</UCard>
+	</section>
 </template>

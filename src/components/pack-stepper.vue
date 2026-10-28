@@ -1,112 +1,121 @@
 <script setup lang="ts">
-import type { StepperItem } from "@nuxt/ui";
-import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, nextTick, onMounted, ref } from "vue";
 
-const currentStep = ref<"select" | "bundle" | "download">("select");
-const selectedPackages = ref<Array<{ name: string; version: string }>>([]);
-const bundleMeta = ref({
+import StepBundleView from "~/components/step-bundle-view.vue";
+import StepDownloadView from "~/components/step-download-view.vue";
+import StepSelectView from "~/components/step-select-view.vue";
+import type {
+	BundleMeta,
+	BundleResult,
+	PackageRef,
+	SelectAdvancePayload,
+} from "~/lib/packy";
+
+type Step = "select" | "bundle" | "download";
+
+const currentStep = ref<Step>("select");
+const selectedPackages = ref<PackageRef[]>([]);
+const bundleMeta = ref<BundleMeta>({
 	name: "",
 	version: "",
-	method: "slim-bundle" as "slim-bundle" | "full-bundle",
+	method: "slim-bundle",
 });
-const bundleResult = ref({
-	name: "",
-	version: "",
-	filename: "",
-	url: "",
-	output: "",
-});
+const bundleResult = ref<BundleResult | null>(null);
 const devMode = ref(false);
-const isXlAndUp = ref(false);
-let mediaQuery: MediaQueryList | null = null;
-let updateOrientation: (() => void) | null = null;
+const stepPosition = ref<HTMLElement | null>(null);
+const stepAnnouncement = ref("");
 
-const stepperOrientation = computed(() =>
-	isXlAndUp.value ? "vertical" : "horizontal",
-);
-
-const baseItems = [
+const stepDefinitions = [
 	{
 		value: "select" as const,
-		slot: "select" as const,
-		title: "Select",
-		description: "Choose packages",
-		icon: "i-lucide:package-search",
+		title: "Select packages",
+		description: "Choose packages and versions.",
 	},
 	{
 		value: "bundle" as const,
-		slot: "bundle" as const,
 		title: "Bundle",
-		description: "Bundle packages into tarball",
-		icon: "i-lucide:package-open",
+		description: "Build the tarball in the browser.",
 	},
 	{
 		value: "download" as const,
-		slot: "download" as const,
 		title: "Download",
-		description: "Download tarball",
-		icon: "i-lucide:file-down",
+		description: "Save and install the archive.",
 	},
-] satisfies StepperItem[];
+];
 
-// Mock data for devMode
-const mockPackages = [
+const mockPackages: PackageRef[] = [
 	{ name: "lodash", version: "4.17.21" },
 	{ name: "axios", version: "1.6.0" },
 	{ name: "vue", version: "3.5.32" },
 ];
 
-const mockBundleMeta = {
+const mockBundleMeta: BundleMeta = {
 	name: "dev-bundle",
 	version: "1.0.0",
-	method: "slim-bundle" as const,
+	method: "slim-bundle",
 };
 
-const mockBundleResult = {
+const mockBundleResult: BundleResult = {
 	name: "dev-bundle",
 	version: "1.0.0",
 	filename: "dev-bundle-1.0.0.tgz",
 	url: "#",
-	output: "Mock bundling process completed successfully!\n\nInstalled packages:\n- lodash@4.17.21\n- axios@1.6.0\n- vue@3.5.32\n\nBundle created at: dev-bundle-1.0.0.tgz",
+	output: "Mock bundling process completed successfully.\n\nInstalled packages:\n- lodash@4.17.21\n- axios@1.6.0\n- vue@3.5.32\n\nBundle created at: dev-bundle-1.0.0.tgz",
+	size: 4_312_678,
 };
 
-const items = computed(() => {
-	const currentIndex = baseItems.findIndex(
-		(item) => item.value === currentStep.value,
-	);
-	return baseItems.map((item, index) => ({
-		...item,
-		disabled: devMode.value
-			? false
-			: index > currentIndex ||
-				(currentStep.value === "download" && index === 1),
-	}));
-});
+const currentIndex = computed(() =>
+	stepDefinitions.findIndex((step) => step.value === currentStep.value),
+);
 
-function handleSelectAdvance(payload: {
-	packages: Array<{ name: string; version: string }>;
-	bundleName: string;
-	bundleVersion: string;
-	bundleMethod: "slim-bundle" | "full-bundle";
-}) {
+const steps = computed(() =>
+	stepDefinitions.map((step, index) => {
+		const status =
+			index < currentIndex.value
+				? { label: "Done", role: "success" }
+				: index === currentIndex.value
+					? { label: "Current", role: "progress" }
+					: { label: "Waiting", role: "neutral" };
+
+		return {
+			...step,
+			current: index === currentIndex.value,
+			status,
+		};
+	}),
+);
+
+const positionLabel = computed(
+	() =>
+		`Step ${currentIndex.value + 1} of ${stepDefinitions.length} · ${
+			stepDefinitions[currentIndex.value]?.title ?? ""
+		}`,
+);
+
+async function focusStepPosition() {
+	await nextTick();
+	stepPosition.value?.focus();
+}
+
+function handleSelectAdvance(payload: SelectAdvancePayload) {
 	selectedPackages.value = payload.packages;
 	bundleMeta.value = {
 		name: payload.bundleName,
 		version: payload.bundleVersion,
 		method: payload.bundleMethod,
 	};
+	bundleResult.value = null;
 	currentStep.value = "bundle";
+	stepAnnouncement.value = "";
+	void focusStepPosition();
 }
 
-function handleBundleReady(payload: {
-	name: string;
-	version: string;
-	filename: string;
-	url: string;
-	output: string;
-}) {
+function handleBundleReady(payload: BundleResult) {
 	bundleResult.value = payload;
 	currentStep.value = "download";
+	stepAnnouncement.value =
+		"Bundle complete. The archive is ready to download.";
+	void focusStepPosition();
 }
 
 function handlePackMorePackages() {
@@ -116,14 +125,10 @@ function handlePackMorePackages() {
 		version: "",
 		method: "slim-bundle",
 	};
-	bundleResult.value = {
-		name: "",
-		version: "",
-		filename: "",
-		url: "",
-		output: "",
-	};
+	bundleResult.value = null;
 	currentStep.value = "select";
+	stepAnnouncement.value = "";
+	void focusStepPosition();
 }
 
 function handleDownloadUrlRevoke(url: string) {
@@ -132,14 +137,26 @@ function handleDownloadUrlRevoke(url: string) {
 	}
 }
 
-// DevMode functions
-function skipToBundle() {
-	selectedPackages.value = mockPackages;
+function resetDevMode() {
+	selectedPackages.value = [];
 	bundleMeta.value = {
-		...mockBundleMeta,
+		name: "",
+		version: "",
 		method: "slim-bundle",
 	};
+	bundleResult.value = null;
+	currentStep.value = "select";
+	stepAnnouncement.value = "";
+	void focusStepPosition();
+}
+
+function skipToBundle() {
+	selectedPackages.value = mockPackages;
+	bundleMeta.value = mockBundleMeta;
+	bundleResult.value = null;
 	currentStep.value = "bundle";
+	stepAnnouncement.value = "";
+	void focusStepPosition();
 }
 
 function skipToDownload() {
@@ -147,115 +164,110 @@ function skipToDownload() {
 	bundleMeta.value = mockBundleMeta;
 	bundleResult.value = mockBundleResult;
 	currentStep.value = "download";
-}
-
-function resetToSelect() {
-	handlePackMorePackages();
+	stepAnnouncement.value = "";
+	void focusStepPosition();
 }
 
 onMounted(() => {
-	mediaQuery = window.matchMedia("(min-width: 1280px)");
-	updateOrientation = () => {
-		isXlAndUp.value = mediaQuery?.matches ?? false;
-	};
-
-	updateOrientation();
-	mediaQuery.addEventListener("change", updateOrientation);
-	window.addEventListener("resize", updateOrientation);
-
-	// Check for devMode query parameter
-	const urlParams = new URLSearchParams(window.location.search);
-	devMode.value = urlParams.has("devMode");
-
-	if (devMode.value) {
-		// Pre-populate with mock data for easier testing
-		selectedPackages.value = mockPackages;
-		bundleMeta.value = mockBundleMeta;
-	}
-});
-
-onBeforeUnmount(() => {
-	if (mediaQuery && updateOrientation) {
-		mediaQuery.removeEventListener("change", updateOrientation);
-		window.removeEventListener("resize", updateOrientation);
-	}
+	const params = new URLSearchParams(window.location.search);
+	devMode.value = params.has("devMode");
 });
 </script>
 
 <template>
-	<UCard variant="outline" class="z-10">
-		<template #header v-if="devMode">
-			<div class="flex items-center justify-between">
-				<div class="flex items-center gap-2">
-					<UBadge color="warning" variant="soft">
-						<UIcon name="i-lucide-zap" class="mr-1 h-4 w-4" />
-						Dev Mode
-					</UBadge>
-					<span class="text-muted text-sm"
-						>Quick navigation enabled</span
-					>
+	<div class="page-flow">
+		<header class="page-header">
+			<div>
+				<h1>Bundle npm packages</h1>
+				<p>
+					Create a tarball for offline or air-gapped installs, with
+					every dependency packed in the browser.
+				</p>
+			</div>
+			<p ref="stepPosition" class="page-header__position" tabindex="-1">
+				{{ positionLabel }}
+			</p>
+		</header>
+
+		<p class="sr-only" aria-live="polite">{{ stepAnnouncement }}</p>
+
+		<div class="t128n-stack">
+			<div v-if="devMode" class="dev-bar">
+				<div class="dev-bar__label">
+					<span class="status status--warning">Dev mode</span>
+					<span>Quick navigation with mock data.</span>
 				</div>
-				<div class="flex gap-2">
-					<UButton
-						size="xs"
-						variant="ghost"
-						color="neutral"
-						@click="resetToSelect"
+				<div class="toolbar__group">
+					<button
+						class="button button--secondary"
+						type="button"
+						@click="resetDevMode"
 					>
 						Reset
-					</UButton>
-					<UButton
-						size="xs"
-						variant="ghost"
-						color="primary"
+					</button>
+					<button
+						class="button button--secondary"
+						type="button"
 						@click="skipToBundle"
 					>
-						Skip to Bundle
-					</UButton>
-					<UButton
-						size="xs"
-						variant="ghost"
-						color="success"
+						Skip to bundle
+					</button>
+					<button
+						class="button button--secondary"
+						type="button"
 						@click="skipToDownload"
 					>
-						Skip to Download
-					</UButton>
+						Skip to download
+					</button>
 				</div>
 			</div>
-		</template>
 
-		<UStepper
-			v-model="currentStep"
-			:linear="!devMode"
-			:orientation="stepperOrientation"
-			:items="items"
-			class="w-full gap-6"
-		>
-			<template #select>
-				<StepSelectView @advance="handleSelectAdvance" />
-			</template>
-			<template #bundle>
-				<StepBundleView
-					v-if="currentStep === 'bundle'"
-					:packages="selectedPackages"
-					:bundle-name="bundleMeta.name"
-					:bundle-version="bundleMeta.version"
-					:bundle-method="bundleMeta.method"
-					@ready="handleBundleReady"
-				/>
-			</template>
-			<template #download>
-				<StepDownloadView
-					v-if="currentStep === 'download'"
-					:bundle-name="bundleResult.name || bundleMeta.name"
-					:bundle-version="bundleResult.version || bundleMeta.version"
-					:filename="bundleResult.filename"
-					:url="bundleResult.url"
-					:output="bundleResult.output"
-					@pack-more-packages="handlePackMorePackages"
-					@dispose-url="handleDownloadUrlRevoke"
-				/>
-			</template>
-		</UStepper>
-	</UCard>
+			<nav aria-label="Bundle progress">
+				<ol class="steps">
+					<li
+						v-for="(step, index) in steps"
+						:key="step.value"
+						class="step"
+						:aria-current="step.current ? 'step' : undefined"
+					>
+						<span class="step__index">{{ index + 1 }}</span>
+						<span class="step__text">
+							<span class="step__label">{{ step.title }}</span>
+							<span class="step__description">{{
+								step.description
+							}}</span>
+						</span>
+						<span
+							class="status"
+							:class="`status--${step.status.role}`"
+							>{{ step.status.label }}</span
+						>
+					</li>
+				</ol>
+			</nav>
+
+			<StepSelectView
+				v-if="currentStep === 'select'"
+				@advance="handleSelectAdvance"
+			/>
+
+			<StepBundleView
+				v-else-if="currentStep === 'bundle'"
+				:packages="selectedPackages"
+				:bundle-name="bundleMeta.name"
+				:bundle-version="bundleMeta.version"
+				:bundle-method="bundleMeta.method"
+				@ready="handleBundleReady"
+				@restart="handlePackMorePackages"
+			/>
+
+			<StepDownloadView
+				v-else-if="currentStep === 'download' && bundleResult"
+				:result="bundleResult"
+				:bundle-method="bundleMeta.method"
+				@pack-more-packages="handlePackMorePackages"
+				@dispose-url="handleDownloadUrlRevoke"
+			/>
+		</div>
+	</div>
 </template>

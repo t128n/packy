@@ -4,13 +4,17 @@
 		<meta charset="UTF-8" />
 		<script src="/coi-serviceworker.js"></script>
 		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<meta
+			name="viewport"
+			content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+		/>
+		<meta name="color-scheme" content="light dark" />
 		<meta
 			name="description"
 			content="Bundle npm dependencies into tarballs in the browser for offline and air-gapped deployments when direct registry access is unavailable."
 		/>
 		<meta name="application-name" content="packy" />
-		<meta name="theme-color" content="#8b5cf6" />
+		<meta name="theme-color" content="#2e63cc" />
 		<meta name="robots" content="index,follow" />
 		<meta property="og:title" content="packy" />
 		<meta
@@ -20,9 +24,19 @@
 		<meta property="og:type" content="website" />
 		<meta property="og:url" content="https://packy.js.org/" />
 		<title>packy — frictionless dependency bundling</title>
+		<script>
+			try {
+				const theme = localStorage.getItem("packy-theme");
+				if (theme === "light" || theme === "dark") {
+					document.documentElement.dataset.theme = theme;
+				}
+			} catch {
+				// Storage can be unavailable in private browsing contexts.
+			}
+		</script>
 	</head>
 	<body>
-		<div id="app" class="isolate"></div>
+		<div id="app"></div>
 		<script type="module" src="/src/main.ts"></script>
 	</body>
 </html>
