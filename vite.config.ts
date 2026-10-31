@@ -1,11 +1,16 @@
 import { execSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 
-import ui from "@nuxt/ui/vite";
-import vue from "@vitejs/plugin-vue";
+import { svelte } from "@sveltejs/vite-plugin-svelte";
+import Icons from "unplugin-icons/vite";
 import { defineConfig } from "vite";
-import svgLoader from "vite-svg-loader";
 
 const gitCommitHash = execSync("git rev-parse HEAD").toString().trim();
+
+const crossOriginHeaders = {
+	"Cross-Origin-Opener-Policy": "same-origin",
+	"Cross-Origin-Embedder-Policy": "require-corp",
+};
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -13,44 +18,15 @@ export default defineConfig({
 		__GIT_COMMIT_HASH__: JSON.stringify(gitCommitHash),
 	},
 	resolve: {
-		tsconfigPaths: true,
-	},
-	plugins: [
-		vue(),
-		svgLoader({
-			svgoConfig: {
-				plugins: [
-					{
-						name: "preset-default",
-						params: {
-							overrides: {
-								removeViewBox: false, // Required for proper scaling
-							},
-						},
-					},
-				],
-			},
-		}),
-		ui({
-			router: false,
-			ui: {
-				colors: {
-					primary: "violet",
-					neutral: "taupe",
-				},
-			},
-		}),
-	],
-	server: {
-		headers: {
-			"Cross-Origin-Opener-Policy": "same-origin",
-			"Cross-Origin-Embedder-Policy": "require-corp",
+		alias: {
+			"~": fileURLToPath(new URL("./src", import.meta.url)),
 		},
+	},
+	plugins: [svelte(), Icons({ compiler: "svelte" })],
+	server: {
+		headers: crossOriginHeaders,
 	},
 	preview: {
-		headers: {
-			"Cross-Origin-Opener-Policy": "same-origin",
-			"Cross-Origin-Embedder-Policy": "require-corp",
-		},
+		headers: crossOriginHeaders,
 	},
 });

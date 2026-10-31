@@ -1,7 +1,13 @@
-import ui from "@nuxt/ui/vue-plugin";
-import { createApp } from "vue";
+import "@t128n/ui/styles";
+import { mount } from "svelte";
 
-import "~/style.css";
-import App from "~/App.vue";
+import "~/app.css";
+import App from "~/App.svelte";
 
-createApp(App).use(ui).mount("#app");
+const target = document.getElementById("app");
+
+if (!target) {
+	throw new Error("Missing #app mount point");
+}
+
+mount(App, { target });

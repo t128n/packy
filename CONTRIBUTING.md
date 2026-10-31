@@ -7,16 +7,16 @@
 
 ## Before opening a PR
 
-1. Run `bun run build`.
-2. Run `bun run test:fmt`.
+1. Run `bun run test`.
+2. Run `bun run build`.
 3. If needed, format with `bun run fmt`.
 
 ## Guidelines
 
 - Keep changes focused and small.
-- Match the existing Vue 3, TypeScript, and Vite patterns.
+- Use Svelte 5 runes and `onclick` event attributes.
+- Use `@t128n/ui` components and semantic tokens. Do not add Tailwind, another
+  component library, another icon family, raw colors, or one-off control styles.
+- Keep `src/lib/core/` free of Svelte, DOM, network, and filesystem access.
+- Add `bun:test` coverage for core behavior changes.
 - Include a clear summary in the pull request template.
-
-## Reporting issues
-
-Use the GitHub issue templates for bugs and feature requests so reports include the details needed to act on them.

@@ -1,45 +1,67 @@
 # packy
 
-[![](https://img.shields.io/badge/open-packy.js.org-8E51FF?style=for-the-badge&logo=javascript)](https://packy.js.org)
+[![](https://img.shields.io/badge/open-packy.js.org-0F62FE?style=for-the-badge&logo=javascript)](https://packy.js.org)
 
-packy is a browser-based tool for bundling npm dependencies into a tarball for air-gapped and offline-first deployments.
+packy turns **one npm package reference** into a **single `.tgz` archive** that
+can be installed on a machine without registry access.
+
+```text
+one package reference
+        │
+        ├─ prepare   isolated workspace
+        ├─ install   npm install --ignore-scripts --install-strategy=nested
+        ├─ patch     bundle dependencies, neutralize lifecycle hooks
+        ├─ pack      npm pack --ignore-scripts --json
+        └─ capture   read the tarball bytes
+        ▼
+one archive + the identity npm actually packed
+```
+
+Authoring an archive requires registry access. Installing it does not. That is
+the reason the tool exists.
 
 ## What it does
 
-- Search package metadata when registry access is available
-- Select the dependencies you want to bundle
-- Build a `.tgz` archive in the browser
-- Download the bundle for local use
+- Search the npm registry and choose exactly one package version.
+- Resolve the dependency tree with npm inside WebContainers.
+- Pack a single archive with npm's own filename and identity.
+- Download the archive and install it offline.
 
 ## Tech stack
 
-- Vue 3
+- Svelte 5
 - TypeScript
 - Vite
-- Nuxt UI
+- [`@t128n/ui`](https://github.com/t128n/design) (design system)
 - WebContainers
 
 ## Requirements
 
-packy runs in a modern browser and relies on cross-origin isolation for WebContainer support.
-
-It is designed for environments where direct access to npm registries cannot be guaranteed.
+packy runs in a modern browser and relies on cross-origin isolation for
+WebContainer support (COOP/COEP headers in development, the bundled service
+worker on static hosting).
 
 ## Development
 
 ```bash
-npm install
-npm run dev
+bun install
+bun run dev
 ```
 
-## Build
+## Checks
 
 ```bash
-npm run build
+bun run test       # fmt, lint, knip, typecheck, unit
+bun run build
 ```
 
-## Preview
+## Architecture
 
-```bash
-npm run preview
-```
+- `src/lib/core/` — framework-free pipeline: input normalization, workspace
+  manifest, manifest patching, pack-output parsing, bounded logging, and the
+  `runBundle` orchestrator.
+- `src/lib/runtime/` — WebContainer adapter and an in-memory fake for tests.
+- `src/components/` — Svelte UI composed from `@t128n/ui`.
+
+The core has no DOM, network, or filesystem access. The caller owns the Blob
+URL and the download UI.

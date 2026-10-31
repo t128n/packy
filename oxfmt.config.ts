@@ -13,7 +13,10 @@ export default defineConfig({
 
 	sortImports: {},
 	sortPackageJson: {},
-	sortTailwindcss: {},
 
-	ignorePatterns: ["**/*.mdc", "content/**/*.md"],
+	ignorePatterns: [
+		"**/*.mdc",
+		"content/**/*.md",
+		"public/coi-serviceworker.js",
+	],
 });
