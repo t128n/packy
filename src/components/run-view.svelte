@@ -12,6 +12,7 @@
 	} from "@t128n/ui";
 
 	import type { RunStage } from "../lib/core/types";
+	import { describeFailure } from "../lib/ui/failure";
 
 	type Props = {
 		stage: RunStage | null;
@@ -27,19 +28,8 @@
 	};
 
 	let { stage, log, error, running, onRetry, onReset }: Props = $props();
-	const VERSION_ERROR = /ETARGET|No matching version/i;
-	const NOT_FOUND = /E404|not found/i;
-	const NETWORK_ERROR = /ENOTFOUND|ECONN|ETIMEDOUT|network/i;
-	const ISOLATION_ERROR = /cross-origin isolation|COOP\/COEP/i;
-	let inputError = $derived(VERSION_ERROR.test(log) || NOT_FOUND.test(log));
-	let explanation = $derived.by(() => {
-		if (!error) return "";
-		if (VERSION_ERROR.test(log)) return "This version is not available on npm. Change the version and try again.";
-		if (NOT_FOUND.test(log)) return "npm could not find this package. Check its name and version.";
-		if (NETWORK_ERROR.test(log)) return "Could not reach npm. Check your connection and retry.";
-		if (ISOLATION_ERROR.test(error.message)) return error.message;
-		return `The bundle could not be created. The cause is unknown. Review the details below or retry. (${error.message})`;
-	});
+	let guidance = $derived(error ? describeFailure(error, log) : null);
+	let inputError = $derived(guidance?.action === "edit");
 	const operations: Record<RunStage, string> = { prepare: "Preparing a workspace…", install: "Downloading the package and its dependencies…", patch: "Preparing the package for offline installation…", pack: "Creating the archive…", capture: "Reading the completed archive…" };
 
 	type StageStatus = "waiting" | "active" | "done" | "failed";
@@ -113,7 +103,7 @@
 	{#if error}
 		<Alert tone="danger" title={`${stageLabel(error.stage)} failed`}>
 			<Stack gap="sm" align="start">
-				<Text variant="body-sm">{explanation}</Text>
+				<Text variant="body-sm">{guidance?.message}</Text>
 				{#if error.exitCode !== undefined}
 					<Text variant="body-sm" tone="secondary">
 						Exit code {error.exitCode}

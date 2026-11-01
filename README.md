@@ -3,7 +3,7 @@
 [![](https://img.shields.io/badge/open-packy.js.org-0F62FE?style=for-the-badge&logo=javascript)](https://packy.js.org)
 
 packy turns **one npm package reference** into a **single `.tgz` archive** that
-can be installed on a machine without registry access.
+can help install packages on a machine without registry access.
 
 ```text
 one package reference
@@ -17,15 +17,20 @@ one package reference
 one archive + the identity npm actually packed
 ```
 
-Authoring an archive requires registry access. Installing it does not. That is
-the reason the tool exists.
+Authoring an archive requires registry access. Offline installation requires all
+necessary dependencies and artifacts to be available locally. npm bundles the
+resolved dependency tree where supported, but peer dependencies are not explicitly bundled.
+Native binaries or other external resources may require additional preparation.
+The recommended install command disables lifecycle scripts with `--ignore-scripts`;
+packages that rely on those scripts may not work. Verify each archive and its
+requirements before relying on it in an air-gapped environment.
 
 ## What it does
 
 - Search the npm registry and choose exactly one package version.
 - Resolve the dependency tree with npm inside WebContainers.
 - Pack a single archive with npm's own filename and identity.
-- Download the archive and install it offline.
+- Download the archive and install it locally, with the required dependencies available.
 
 ## Tech stack
 
@@ -52,6 +57,8 @@ bun run dev
 
 ```bash
 bun run test       # fmt, lint, knip, typecheck, unit
+bunx playwright install chromium  # once, for browser tests
+bun run test:browser
 bun run build
 ```
 

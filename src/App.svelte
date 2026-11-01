@@ -7,7 +7,7 @@
 		PageHeader,
 		Section,
 	} from "@t128n/ui";
-	import { onDestroy, onMount } from "svelte";
+	import { onDestroy, onMount, tick } from "svelte";
 
 	import AppFooter from "~/components/app-footer.svelte";
 	import AppNavbar from "~/components/app-navbar.svelte";
@@ -42,15 +42,30 @@
 	let failure = $state<RunFailure | null>(null);
 	let result = $state<RunResult | null>(null);
 	let downloadUrl = $state<string | null>(null);
+	let downloadError = $state("");
 	let crossOriginIsolated = $state(true);
+	let workflowRegion = $state<HTMLElement>();
+	let pickerRegion = $state<HTMLElement>();
+	let destroyed = false;
 
 	onMount(() => {
 		crossOriginIsolated = Boolean(globalThis.crossOriginIsolated);
 	});
 
 	onDestroy(() => {
+		destroyed = true;
 		revokeDownloadUrl();
 	});
+
+	async function focusWorkflow() {
+		await tick();
+		if (!destroyed) workflowRegion?.focus();
+	}
+
+	async function focusPicker() {
+		await tick();
+		if (!destroyed) pickerRegion?.querySelector<HTMLInputElement>("input")?.focus();
+	}
 
 	function revokeDownloadUrl() {
 		if (downloadUrl !== null) {
@@ -69,7 +84,9 @@
 		}
 
 		reference = next;
+		downloadError = "";
 		phase = "running";
+		void focusWorkflow();
 		stage = null;
 		failure = null;
 		result = null;
@@ -91,6 +108,7 @@
 				},
 			});
 
+			if (destroyed) return;
 			result = run;
 			log = run.log;
 			stage = null;
@@ -100,7 +118,9 @@
 					type: "application/gzip",
 				}),
 			);
+			void focusWorkflow();
 		} catch (cause) {
+			if (destroyed) return;
 			if (isRunError(cause)) {
 				failure = {
 					stage: cause.stage,
@@ -121,6 +141,7 @@
 			}
 
 			phase = "error";
+			void focusWorkflow();
 		}
 	}
 
@@ -133,6 +154,7 @@
 	function editConfiguration() {
 		phase = "idle";
 		failure = null;
+		void focusPicker();
 	}
 
 	function reset() {
@@ -144,6 +166,8 @@
 		log = "";
 		failure = null;
 		result = null;
+		downloadError = "";
+		void focusPicker();
 	}
 
 	function download() {
@@ -151,13 +175,19 @@
 			return;
 		}
 
+		downloadError = "";
 		const link = document.createElement("a");
-		link.href = downloadUrl;
-		link.download = result.filename;
-		link.rel = "noreferrer";
-		document.body.append(link);
-		link.click();
-		link.remove();
+		try {
+			link.href = downloadUrl;
+			link.download = result.filename;
+			link.rel = "noreferrer";
+			document.body.append(link);
+			link.click();
+		} catch {
+			downloadError = "The download could not be started. Check your browser’s download settings and try again.";
+		} finally {
+			link.remove();
+		}
 	}
 </script>
 
@@ -185,14 +215,15 @@
 				</Alert>
 			{/if}
 
-			<div hidden={phase !== "idle"}>
-				<Section title="Choose a package">
+			<div hidden={phase !== "idle"} bind:this={pickerRegion}>
+				<Section>
 					{#key pickerKey}
 						<PackagePicker disabled={!crossOriginIsolated} disabledReason="Cross-origin isolation is required to build an archive." onStart={start} />
 					{/key}
 				</Section>
 			</div>
 			{#if phase === "running" || phase === "error"}
+				<div bind:this={workflowRegion} tabindex="-1" class="workflow-focus">
 				<Section
 					title={phase === "error" ? "Bundle could not be created" : "Creating your bundle"}
 					description={reference
@@ -210,17 +241,21 @@
 						onReset={editConfiguration}
 					/>
 				</Section>
+				</div>
 			{:else if result !== null}
+				<div bind:this={workflowRegion} tabindex="-1" class="workflow-focus">
 				<Section
 					title="Bundle ready"
 				>
 					<ResultView
 						{result}
 						{downloadUrl}
+						{downloadError}
 						onDownload={download}
 						onReset={reset}
 					/>
 				</Section>
+				</div>
 			{/if}
 
 		</Page>

@@ -12,12 +12,13 @@
 		"preview": "vite preview",
 		"fmt": "oxfmt .",
 		"lint:fix": "oxlint . --fix",
-		"test": "bun run --parallel \"test:*\"",
+		"test": "bun run --parallel test:fmt test:lint test:knip test:typecheck test:unit",
 		"test:fmt": "oxfmt . --check",
 		"test:lint": "oxlint .",
 		"test:knip": "knip",
 		"test:typecheck": "svelte-check --tsconfig ./tsconfig.json",
-		"test:unit": "bun test"
+		"test:unit": "bun test src",
+		"test:browser": "playwright test"
 	},
 	"dependencies": {
 		"@t128n/ui": "0.1.1",
@@ -30,6 +31,7 @@
 	"devDependencies": {
 		"@e18e/eslint-plugin": "^0.3.0",
 		"@iconify-json/carbon": "^1.2.29",
+		"@playwright/test": "^1.56.0",
 		"@sveltejs/vite-plugin-svelte": "^7.3.1",
 		"@types/bun": "^1.4.4",
 		"@types/node": "^25.6.0",

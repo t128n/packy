@@ -139,7 +139,7 @@
 			})
 			.map(([tag, version]) => ({
 				value: tag,
-				label: `${tag} tag · ${version}`,
+				label: `Dist-tag · ${tag} → ${version}`,
 			}));
 	});
 
@@ -152,19 +152,6 @@
 			}));
 
 		return [...tagOptions, ...versions];
-	});
-
-	let searchDescription = $derived.by(() => {
-		if (searchLoading) {
-			return "Searching the npm registry…";
-		}
-
-		if (searchResults.length > 0) {
-			const count = searchResults.length;
-			return `${count} package${count === 1 ? "" : "s"} found.`;
-		}
-
-		return "Search by package name. Type at least 3 characters for a full search.";
 	});
 
 	let searchEmptyMessage = $derived.by(() => {
@@ -278,7 +265,7 @@
 			return "No published versions were found.";
 		}
 
-		return `Search ${versionCount} version${versionCount === 1 ? "" : "s"} and ${tagOptions.length} dist-tag${tagOptions.length === 1 ? "" : "s"}.`;
+		return "";
 	});
 
 	let canStart = $derived(
@@ -504,7 +491,7 @@
 		version: string,
 		meta: RegistryVersion,
 	): string {
-		const parts = [version];
+		const parts = [`Version · ${version}`];
 
 		if (version === latestVersion) {
 			parts.push("latest");
@@ -606,7 +593,7 @@
 		<Stack gap="lg">
 			<Inline justify="between" align="start" gap="md" wrap>
 				<Stack gap="xs">
-					<Text variant="subheading" as="h3">{packageName}</Text>
+					<Text variant="subheading" as="h2">{packageName}</Text>
 					{#if packument.description}<Text variant="body-sm" tone="secondary">{packument.description}</Text>{/if}
 				</Stack>
 				<Button variant="secondary" onclick={clearSelection} {disabled}>Change package</Button>
@@ -621,7 +608,7 @@
 			{:else}
 				<Stack gap="sm">
 					<Combobox label="Version" description={versionDescription} placeholder={effectiveVersionSpec === "latest" ? `latest (${latestVersion})` : effectiveVersionSpec} items={versionOptions} value={versionSpec} onValueChange={handleVersionSelect} bind:inputValue={versionFilter} {disabled} />
-					<Text variant="body-sm" tone="secondary">Requested: {effectiveVersionSpec}{#if resolvedVersion && resolvedVersion !== effectiveVersionSpec} · Published version: {resolvedVersion}{/if}</Text>
+					<Text variant="body-sm" tone="secondary">Requested: {effectiveVersionSpec}{#if resolvedVersion && resolvedVersion !== effectiveVersionSpec} · Currently points to {resolvedVersion}; npm resolves the tag when building.{/if}</Text>
 					{#if capped}<Text variant="body-sm" tone="secondary">Showing the {MAX_VISIBLE_VERSIONS} newest versions. Use a custom specification for older versions.</Text>{/if}
 					<Inline><Button variant="link" onclick={useCustomSpec} {disabled}>Use a version range or tag</Button></Inline>
 				</Stack>
@@ -630,9 +617,8 @@
 	{:else}
 		<Stack gap="md">
 			<Input
-				label="Search package"
-				description={searchDescription}
-				placeholder="e.g. lodash or @types/node"
+				label="Package"
+				placeholder="Search npm packages…"
 				value={searchTerm}
 				oninput={(event) => {
 					searchTerm = event.currentTarget.value;
@@ -674,6 +660,9 @@
 			{/if}
 			{#if searchResults.length > 0}
 				<Stack gap="xs">
+					<Text variant="body-sm" tone="secondary" aria-live="polite">
+						{searchResults.length} {searchResults.length === 1 ? "result" : "results"}
+					</Text>
 					{#each searchResults as result (result.name)}
 						<button
 							class="package-result"
@@ -724,7 +713,7 @@
 	{#if packument}
 		<Text variant="body-sm" tone="secondary">Registry access is required to build. Peer dependencies and packages requiring install scripts may need extra steps offline.</Text>
 		<Inline gap="sm" align="center" wrap>
-			<Button variant="primary" disabled={!canStart} onclick={start}>Build bundle</Button>
+			<Button variant="primary" disabled={!canStart} onclick={start}>Create bundle</Button>
 			{#if disabled}<Text variant="body-sm" tone="secondary">{disabledReason}</Text>{/if}
 		</Inline>
 	{/if}
