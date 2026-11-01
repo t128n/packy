@@ -687,7 +687,7 @@
 	{/if}
 
 	{#if packument}
-		<Text variant="body-sm" tone="secondary">Registry access is required to build. Peer dependencies and packages requiring install scripts may need extra steps offline.</Text>
+		<Text variant="body-sm" tone="secondary">Registry access is required to build. Packages requiring install scripts may need extra steps offline.</Text>
 		<Inline gap="sm" align="center" wrap>
 			<Button variant="primary" disabled={!canStart} onclick={start}>Create bundle</Button>
 			{#if disabled}<Text variant="body-sm" tone="secondary">{disabledReason}</Text>{/if}

@@ -41,7 +41,6 @@ function defaultManifest(): Record<string, unknown> {
 		main: "lodash.js",
 		dependencies: { zebra: "1.0.0", alpha: "1.0.0" },
 		optionalDependencies: { middle: "2.0.0", alpha: "1.0.0" },
-		peerDependencies: { react: ">=18" },
 		scripts: {
 			postinstall: "node setup.js",
 			test: "jest",
@@ -244,13 +243,95 @@ describe("runBundle", () => {
 			lint: "eslint .",
 			prepublishOnly: "echo skip-prepublishOnly",
 		});
-		expect(patched.peerDependencies).toEqual({ react: ">=18" });
 		expect(patched.description).toBe("Lodash modular utilities.");
 		expect(patched.main).toBe("lodash.js");
 
 		const lastWrite = runtime.writes.at(-1)!;
 		expect(lastWrite.path).toBe(`${runtime.calls[1]!.cwd}/package.json`);
 		expect(lastWrite.contents).toBe(snapshot);
+	});
+
+	test("installs peer dependencies inside the package before packing", async () => {
+		const runtime = createRuntime({
+			manifest: {
+				name: PACKAGE_NAME,
+				version: PACKAGE_VERSION,
+				dependencies: { runtime: "1.0.0" },
+				peerDependencies: {
+					react: ">=18",
+					"@types/react": "^19",
+					sass: "^1.0.0",
+				},
+				peerDependenciesMeta: { sass: { optional: true } },
+			},
+		});
+
+		const result = await runBundle({ runtime, reference: reference() });
+
+		const install = runtime.calls[0]!;
+		const peerInstall = runtime.calls[1]!;
+		const pack = runtime.calls[2]!;
+
+		expect(runtime.calls.map((call) => call.args[0])).toEqual([
+			"install",
+			"install",
+			"pack",
+		]);
+		expect(peerInstall.args).toEqual(install.args);
+		expect(peerInstall.cwd).toBe(
+			`${install.cwd}/node_modules/${PACKAGE_NAME}`,
+		);
+		expect(pack.cwd).toBe(peerInstall.cwd);
+
+		const prepared = JSON.parse(runtime.writes[0]!.contents) as Record<
+			string,
+			unknown
+		>;
+		expect(prepared.dependencies).toEqual({
+			runtime: "1.0.0",
+			react: ">=18",
+			"@types/react": "^19",
+		});
+
+		const patched = JSON.parse(runtime.writes.at(-1)!.contents) as Record<
+			string,
+			unknown
+		>;
+		expect(patched.bundleDependencies).toEqual([
+			"@types/react",
+			"react",
+			"runtime",
+		]);
+		expect(patched.bundledDependencies).toEqual([
+			"@types/react",
+			"react",
+			"runtime",
+		]);
+		expect(patched.dependencies).toEqual({ runtime: "1.0.0" });
+		expect(patched.peerDependencies).toEqual({
+			react: ">=18",
+			"@types/react": "^19",
+			sass: "^1.0.0",
+		});
+		expect(result.log.match(/\$ npm install/g)).toHaveLength(2);
+	});
+
+	test("does not reinstall a peer that is already a dependency", async () => {
+		const runtime = createRuntime({
+			manifest: {
+				name: PACKAGE_NAME,
+				version: PACKAGE_VERSION,
+				dependencies: { react: "19.0.0" },
+				peerDependencies: { react: ">=18" },
+			},
+		});
+
+		await runBundle({ runtime, reference: reference() });
+
+		expect(runtime.calls.map((call) => call.args[0])).toEqual([
+			"install",
+			"pack",
+		]);
 	});
 
 	test("fails at install with the exit code and log", async () => {

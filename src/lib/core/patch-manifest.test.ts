@@ -67,14 +67,19 @@ describe("patchInstalledManifest", () => {
 		expect(patched.bundledDependencies).toEqual([]);
 	});
 
-	test("does not bundle peer dependencies", () => {
+	test("bundles required peer dependencies but not optional peers", () => {
 		const patched = patchInstalledManifest({
 			dependencies: { runtime: "1.0.0" },
 			optionalDependencies: { optional: "1.0.0" },
-			peerDependencies: { peer: "1.0.0" },
+			peerDependencies: { peer: "1.0.0", maybe: "1.0.0" },
+			peerDependenciesMeta: { maybe: { optional: true } },
 		});
 
-		expect(patched.bundleDependencies).toEqual(["optional", "runtime"]);
+		expect(patched.bundleDependencies).toEqual([
+			"optional",
+			"peer",
+			"runtime",
+		]);
 	});
 
 	test("neutralizes every hook and preserves unrelated scripts", () => {

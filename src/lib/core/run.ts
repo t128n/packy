@@ -2,7 +2,10 @@ import { RunError, toRunError } from "./errors";
 import { createLogBuffer, stripAnsi } from "./log";
 import { normalizePackageReference } from "./normalize-input";
 import { findTarball, parsePackOutput } from "./parse-pack-output";
-import { patchInstalledManifest } from "./patch-manifest";
+import {
+	patchInstalledManifest,
+	requiredPeerDependencies,
+} from "./patch-manifest";
 import type { RunOptions, RunResult, Runtime } from "./types";
 import { createWorkspaceManifest } from "./workspace-manifest";
 
@@ -70,6 +73,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function errorMessage(cause: unknown): string {
 	return cause instanceof Error ? cause.message : String(cause);
+}
+
+function dependencyNames(value: unknown): string[] {
+	return isRecord(value) ? Object.keys(value) : [];
 }
 
 function parseInstalledManifest(text: string): Record<string, unknown> {
@@ -273,6 +280,68 @@ export async function runBundle(options: RunOptions): Promise<RunResult> {
 		}
 
 		const installed = parseInstalledManifest(installedText);
+
+		// npm hoists peer dependencies out of the installed package with the
+		// nested strategy. Install them inside the package so npm pack can
+		// include them in the archive.
+		const nestedDependencies = new Set([
+			...dependencyNames(installed.dependencies),
+			...dependencyNames(installed.optionalDependencies),
+		]);
+		const peersToInstall = Object.fromEntries(
+			Object.entries(requiredPeerDependencies(installed)).filter(
+				([name]) => !nestedDependencies.has(name),
+			),
+		);
+
+		if (Object.keys(peersToInstall).length > 0) {
+			const peerManifest = {
+				...installed,
+				dependencies: {
+					...(isRecord(installed.dependencies)
+						? installed.dependencies
+						: {}),
+					...peersToInstall,
+				},
+			};
+
+			try {
+				await runtime.writeText(
+					installedManifestPath,
+					stringifyManifest(peerManifest),
+				);
+			} catch (cause) {
+				throw new RunError({
+					stage: "patch",
+					message: `Could not write ${installedManifestPath}: ${errorMessage(cause)}`,
+					cause,
+				});
+			}
+
+			let peerInstallExitCode: number;
+
+			try {
+				peerInstallExitCode = await runCommand(
+					runtime,
+					sink,
+					"npm",
+					INSTALL_ARGS,
+					installedDirectory,
+					commandEnv,
+				);
+			} catch (cause) {
+				throw toRunError(cause, "patch");
+			}
+
+			if (peerInstallExitCode !== 0) {
+				throw new RunError({
+					stage: "patch",
+					message: `npm install for peer dependencies failed with exit code ${peerInstallExitCode}.`,
+					exitCode: peerInstallExitCode,
+				});
+			}
+		}
+
 		const patched = patchInstalledManifest(installed);
 
 		try {

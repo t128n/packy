@@ -165,7 +165,9 @@ Requirements:
 Read `bundle/node_modules/<name>/package.json` after install.
 
 - Set `bundleDependencies` to the sorted, de-duplicated union of the keys of
-  the manifest's `dependencies` and `optionalDependencies`.
+  the manifest's `dependencies`, `optionalDependencies`, and required
+  `peerDependencies`. Peer dependencies marked `optional` in
+  `peerDependenciesMeta` are not bundled.
 - Set `bundledDependencies` to the same array (legacy alias).
 - If the original manifest used `bundleDependencies: true`, replace it with the
   explicit array.
@@ -177,8 +179,12 @@ Read `bundle/node_modules/<name>/package.json` after install.
 - Preserve all other manifest fields and unrelated scripts.
 - Write the manifest back before packing.
 
-Peer dependencies are not added to the bundled list. The archive keeps the
-original peer requirements, and the consumer's npm resolves them as usual.
+Required peer dependencies are added to the bundled list. With the nested
+install strategy npm hoists peers outside the installed package, so before the
+final patch they are installed inside the package directory with the same
+install flags. Peers that are already dependencies or optional dependencies are
+not installed a second time, and optional peers stay optional. The archive keeps
+the original peer requirements, so the bundled copies satisfy them directly.
 
 A missing or unparsable installed manifest is a `patch` failure.
 
@@ -367,8 +373,9 @@ Requirements:
 - **Ranges are resolved at run time.** Reproducible archives require exact
   versions. The result always reports what was actually packed.
 - **No deduplication or hoisting.** The package keeps its own resolved tree.
-- **Peer dependencies stay peer dependencies.** They are not bundled; the
-  archive keeps the original requirement.
+- **Required peer dependencies are bundled.** They stay declared as peers, but
+  their resolved copies are included in the archive. Optional peers stay
+  optional.
 - **No script execution, ever.** Packages that only work via install scripts
   are outside the supported contract.
 - **No manifest or dependency-set input.** The core accepts one package

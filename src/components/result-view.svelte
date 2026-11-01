@@ -105,12 +105,6 @@
 				{copyError}
 			</Text>
 		{/if}
-		<Text variant="body-sm" tone="secondary">
-			The archive includes the dependencies bundled by npm. Peer dependencies
-			are not explicitly bundled and may need to be available separately; packages requiring
-			install scripts or external binaries may need additional preparation.
-			Verify these requirements before installing without registry access.
-		</Text>
 	</Stack>
 </Stack>
 
