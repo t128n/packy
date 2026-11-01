@@ -19,7 +19,8 @@ one archive + the identity npm actually packed
 
 Authoring an archive requires registry access. Offline installation requires all
 necessary dependencies and artifacts to be available locally. npm bundles the
-resolved dependency tree where supported, but peer dependencies are not explicitly bundled.
+resolved dependency tree, including required peer dependencies. Optional peers
+stay optional.
 Native binaries or other external resources may require additional preparation.
 The recommended install command disables lifecycle scripts with `--ignore-scripts`;
 packages that rely on those scripts may not work. Verify each archive and its
