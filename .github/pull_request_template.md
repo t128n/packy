@@ -4,8 +4,8 @@ Describe the change and why it is needed.
 
 ## Checks
 
+- [ ] `bun run test`
 - [ ] `bun run build`
-- [ ] `bun run test:fmt`
 
 ## Notes
 

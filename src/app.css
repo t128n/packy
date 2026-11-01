@@ -1,0 +1,24 @@
+/* App-level layout only. Everything visual comes from @t128n/ui tokens. */
+
+html,
+body {
+	min-height: 100%;
+}
+
+body {
+	background: var(--color-workspace);
+}
+
+.app-frame {
+	display: flex;
+	flex-direction: column;
+	min-height: 100dvh;
+}
+
+.app-shell {
+	flex: 1;
+}
+
+.page.task-column {
+	max-width: 45rem;
+}

@@ -2,7 +2,7 @@ repository:
     name: packy
     description: "packy helps build and bundle package-based projects in the browser."
     homepage: https://packy.js.org
-    topics: vue, vite, webcontainers, packages
+    topics: svelte, vite, webcontainers, packages
     has_issues: true
     has_projects: false
     has_wiki: false

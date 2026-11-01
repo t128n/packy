@@ -11,6 +11,8 @@ node_modules
 .vite
 dist
 dist-ssr
+test-results
+playwright-report
 *.local
 
 # Editor directories and files

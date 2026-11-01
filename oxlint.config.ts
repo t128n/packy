@@ -2,7 +2,7 @@ import { defineConfig } from "oxlint";
 
 export default defineConfig({
 	jsPlugins: ["@e18e/eslint-plugin"],
-	ignorePatterns: ["dist", "node_modules"],
+	ignorePatterns: ["dist", "node_modules", "public/coi-serviceworker.js"],
 	rules: {
 		// modernization
 		"e18e/prefer-array-at": "error",

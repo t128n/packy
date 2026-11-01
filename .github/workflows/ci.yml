@@ -1,0 +1,64 @@
+name: CI
+
+on:
+    pull_request:
+    workflow_dispatch:
+
+permissions:
+    contents: read
+
+jobs:
+    fast:
+        # Cheap checks run on the 1-vCPU runner.
+        runs-on: ubuntu-slim
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Setup Bun
+              uses: oven-sh/setup-bun@v2
+              with:
+                  bun-version: 1.4.3
+
+            - name: Install dependencies
+              run: bun install --frozen-lockfile
+
+            - name: Format
+              run: bun run test:fmt
+
+            - name: Unit tests
+              run: bun run test:unit
+
+    quality:
+        # knip/oxc-parser allocates a 2 GB parse buffer, and the browser suite
+        # needs more memory than the slim runner provides.
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Setup Bun
+              uses: oven-sh/setup-bun@v2
+              with:
+                  bun-version: 1.4.3
+
+            - name: Install dependencies
+              run: bun install --frozen-lockfile
+
+            - name: Lint
+              run: bun run test:lint
+
+            - name: Unused files and dependencies
+              run: bun run test:knip
+
+            - name: Typecheck
+              run: bun run test:typecheck
+
+            - name: Install browser
+              run: bunx playwright install --with-deps chromium
+
+            - name: Browser tests
+              run: bun run test:browser
+
+            - name: Build
+              run: bun run build
