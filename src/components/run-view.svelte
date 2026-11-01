@@ -27,6 +27,20 @@
 	};
 
 	let { stage, log, error, running, onRetry, onReset }: Props = $props();
+	const VERSION_ERROR = /ETARGET|No matching version/i;
+	const NOT_FOUND = /E404|not found/i;
+	const NETWORK_ERROR = /ENOTFOUND|ECONN|ETIMEDOUT|network/i;
+	const ISOLATION_ERROR = /cross-origin isolation|COOP\/COEP/i;
+	let inputError = $derived(VERSION_ERROR.test(log) || NOT_FOUND.test(log));
+	let explanation = $derived.by(() => {
+		if (!error) return "";
+		if (VERSION_ERROR.test(log)) return "This version is not available on npm. Change the version and try again.";
+		if (NOT_FOUND.test(log)) return "npm could not find this package. Check its name and version.";
+		if (NETWORK_ERROR.test(log)) return "Could not reach npm. Check your connection and retry.";
+		if (ISOLATION_ERROR.test(error.message)) return error.message;
+		return `The bundle could not be created. The cause is unknown. Review the details below or retry. (${error.message})`;
+	});
+	const operations: Record<RunStage, string> = { prepare: "Preparing a workspace…", install: "Downloading the package and its dependencies…", patch: "Preparing the package for offline installation…", pack: "Creating the archive…", capture: "Reading the completed archive…" };
 
 	type StageStatus = "waiting" | "active" | "done" | "failed";
 
@@ -39,7 +53,7 @@
 	];
 
 	const statusLabels: Record<StageStatus, string> = {
-		waiting: "Waiting",
+		waiting: "Not run",
 		active: "In progress",
 		done: "Done",
 		failed: "Failed",
@@ -93,25 +107,25 @@
 	</Stack>
 
 	{#if running}
-		<Progress value={null} label="Building the archive" />
+		<Progress value={null} label={stage ? operations[stage] : "Starting the build…"} />
 	{/if}
 
 	{#if error}
 		<Alert tone="danger" title={`${stageLabel(error.stage)} failed`}>
 			<Stack gap="sm" align="start">
-				<Text variant="body-sm">{error.message}</Text>
+				<Text variant="body-sm">{explanation}</Text>
 				{#if error.exitCode !== undefined}
 					<Text variant="body-sm" tone="secondary">
 						Exit code {error.exitCode}
 					</Text>
 				{/if}
 				<Inline gap="sm" wrap>
-					<Button variant="secondary" onclick={onRetry}>
+					<Button variant={inputError ? "secondary" : "primary"} onclick={onRetry}>
 						Retry
 					</Button>
 					{#if onReset}
-						<Button variant="link" onclick={onReset}>
-							Change package
+						<Button variant={inputError ? "primary" : "link"} onclick={onReset}>
+							Edit package or version
 						</Button>
 					{/if}
 				</Inline>
@@ -123,7 +137,7 @@
 		<Text variant="body-sm" tone="secondary">No output yet.</Text>
 	{:else}
 		<Collapsible>
-			{#snippet trigger()}Show npm output{/snippet}
+			{#snippet trigger()}Technical details{/snippet}
 			<Code block>{log}</Code>
 		</Collapsible>
 	{/if}

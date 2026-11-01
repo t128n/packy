@@ -19,7 +19,9 @@
 	let copied = $state(false);
 	let copyError = $state<string | null>(null);
 
-	const installCommand = $derived(`npm install ./packages/${result.filename}`);
+	const installCommand = $derived(
+		`npm install --ignore-scripts ./packages/${result.filename}`,
+	);
 
 	function formatBytes(bytes: number): string {
 		const units = ["B", "KiB", "MiB", "GiB"];
@@ -57,7 +59,7 @@
 		<Inline align="center" gap="sm" wrap>
 			<Code>{result.name}@{result.version}</Code>
 			<Text variant="body-sm" tone="secondary" numeric>
-				{formatBytes(result.bytes.byteLength)}
+				{formatBytes(result.bytes.byteLength)} compressed
 			</Text>
 		</Inline>
 		<div class="filename">
@@ -80,9 +82,10 @@
 	</Inline>
 
 	<Stack gap="sm">
+		<Text as="h3" variant="subheading">Install the bundle</Text>
 		<Text variant="body-sm">
 			Place the archive in a <Code>./packages</Code> folder inside your project,
-			then run:
+			then run this command to prevent dependency install scripts from running:
 		</Text>
 		<Code block>{installCommand}</Code>
 		<Inline align="center" gap="sm" wrap>

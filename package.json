@@ -24,6 +24,7 @@
 		"@webcontainer/api": "^1.6.1",
 		"coi-serviceworker": "^0.1.7",
 		"ofetch": "^1.5.1",
+		"semver": "^7.8.5",
 		"svelte": "^5.57.3"
 	},
 	"devDependencies": {
@@ -32,6 +33,7 @@
 		"@sveltejs/vite-plugin-svelte": "^7.3.1",
 		"@types/bun": "^1.4.4",
 		"@types/node": "^25.6.0",
+		"@types/semver": "^7.8.0",
 		"knip": "^6.3.1",
 		"oxfmt": "^0.44.0",
 		"oxlint": "^1.59.0",

@@ -18,3 +18,7 @@ body {
 .app-shell {
 	flex: 1;
 }
+
+.page.task-column {
+	max-width: 45rem;
+}

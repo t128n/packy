@@ -107,7 +107,6 @@ export function normalizePackageReference(input: {
 		versionSpec.includes("/") ||
 		versionSpec.includes("\\") ||
 		versionSpec.startsWith(".") ||
-		versionSpec.startsWith("~") ||
 		PROTOCOL_PATTERN.test(versionSpec)
 	) {
 		throw invalidInput(

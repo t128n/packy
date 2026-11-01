@@ -155,6 +155,12 @@ describe("normalizePackageReference", () => {
 		}
 	});
 
+	test("accepts tilde semver ranges", () => {
+		expect(
+			normalizePackageReference({ name: "lodash", version: "~4.17.0" }),
+		).toEqual({ name: "lodash", versionSpec: "~4.17.0" });
+	});
+
 	test("reports invalid input as a prepare failure", () => {
 		try {
 			normalizePackageReference({ name: "" });

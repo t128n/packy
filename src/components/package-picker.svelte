@@ -10,6 +10,7 @@
 		Text,
 	} from "@t128n/ui";
 	import { tick } from "svelte";
+	import { valid, validRange, maxSatisfying } from "semver";
 
 	import {
 		compareVersionsDesc,
@@ -45,7 +46,7 @@
 	const SEARCH_DEBOUNCE_MS = 300;
 	const SEARCH_MIN_LENGTH = 3;
 	const FORBIDDEN_SPEC =
-		/^(?:file:|link:|workspace:|git\+|https?:|npm:)|[/\\]|^[.~]/i;
+		/^(?:file:|link:|workspace:|git\+|https?:|npm:)|[/\\]|^\./i;
 	const NEWLINE = /[\r\n]/;
 
 	let searchTerm = $state("");
@@ -216,6 +217,15 @@
 			return "Version specs must be a single line.";
 		}
 
+		if (packument && valid(value) && !Object.hasOwn(packument.versions, value)) {
+			return `Version ${value} is not published. Choose a published version or range.`;
+		}
+		if (packument && !validRange(value) && !Object.hasOwn(packument["dist-tags"], value)) {
+			return `“${value}” is not a valid range or a published tag.`;
+		}
+		if (packument && validRange(value) && !maxSatisfying(Object.keys(packument.versions), value)) {
+			return `No published version matches ${value}. Try another range.`;
+		}
 		return "";
 	});
 
@@ -239,20 +249,7 @@
 		resolvedVersion ? packument?.versions[resolvedVersion] : undefined,
 	);
 	let selectedSize = $derived(resolvedMeta?.dist?.unpackedSize);
-	let isLatest = $derived(
-		resolvedVersion.length > 0 && resolvedVersion === latestVersion,
-	);
 	let isDeprecated = $derived(Boolean(resolvedMeta?.deprecated));
-	let isTag = $derived(
-		Boolean(
-			packument &&
-				effectiveVersionSpec !== "latest" &&
-				Object.hasOwn(
-					packument["dist-tags"],
-					effectiveVersionSpec,
-				),
-		),
-	);
 
 	let summaryVersionText = $derived.by(() => {
 		if (!effectiveVersionSpec) {
@@ -393,7 +390,7 @@
 
 			packument = data;
 			packageName = data.name;
-			versionSpec = data["dist-tags"].latest ?? "latest";
+			versionSpec = "latest";
 			versionFilter = "";
 			customMode = false;
 			customSpec = "";
@@ -451,7 +448,7 @@
 	function usePublishedVersions() {
 		customMode = false;
 		customSpec = "";
-		versionSpec = packument?.["dist-tags"].latest ?? "latest";
+		versionSpec = "latest";
 		versionFilter = "";
 	}
 
@@ -607,111 +604,26 @@
 		</Stack>
 	{:else if packument}
 		<Stack gap="lg">
-			<Inline
-				justify="between"
-				align="start"
-				stackAt="sm"
-				gap="md"
-				wrap
-			>
+			<Inline justify="between" align="start" gap="md" wrap>
 				<Stack gap="xs">
-					<Inline gap="sm" align="baseline" wrap>
-						<Text variant="subheading" as="h3">
-							{packageName}
-						</Text>
-						{#if isLatest}
-							<Badge tone="info">latest</Badge>
-						{/if}
-						{#if isTag}
-							<Badge tone="neutral">
-								{effectiveVersionSpec} tag
-							</Badge>
-						{/if}
-						{#if isDeprecated}
-							<Badge tone="warning">deprecated</Badge>
-						{/if}
-					</Inline>
-					<Text variant="body-sm" tone="secondary" numeric>
-						{summaryVersionText}
-					</Text>
-					{#if packument.description}
-						<Text variant="body-sm" tone="muted">
-							{packument.description}
-						</Text>
-					{/if}
+					<Text variant="subheading" as="h3">{packageName}</Text>
+					{#if packument.description}<Text variant="body-sm" tone="secondary">{packument.description}</Text>{/if}
 				</Stack>
-				<Button
-					variant="secondary"
-					onclick={clearSelection}
-					disabled={disabled}
-				>
-					Change package
-				</Button>
+				<Button variant="secondary" onclick={clearSelection} {disabled}>Change package</Button>
 			</Inline>
-
-			{#if isDeprecated && resolvedMeta?.deprecated}
-				<Alert tone="warning" title="Deprecated version">
-					{resolvedMeta.deprecated}
-				</Alert>
-			{/if}
-
+			{#if isDeprecated && resolvedMeta?.deprecated}<Alert tone="warning" title="Deprecated version">{resolvedMeta.deprecated}</Alert>{/if}
 			{#if customMode}
 				<Stack gap="sm">
-					<Input
-						label="Version spec"
-						value={customSpec}
-						oninput={(event) => {
-							customSpec = event.currentTarget.value;
-						}}
-						description="Exact version, semver range, or dist-tag. npm resolves it during the build."
-						placeholder="^18.0.0 or next"
-						error={customSpecError}
-						disabled={disabled}
-					/>
-					<Inline gap="sm">
-						<Button
-							variant="link"
-							onclick={usePublishedVersions}
-							disabled={disabled}
-						>
-							Browse published versions
-						</Button>
-					</Inline>
+					<Input label="Version specification" value={customSpec} oninput={(event) => { customSpec = event.currentTarget.value; }} description="Exact version, range, or published tag." placeholder="^18.0.0 or next" error={customSpecError} {disabled} />
+					<Text variant="body-sm" tone="secondary">Requested: {summaryVersionText}</Text>
+					<Inline><Button variant="link" onclick={usePublishedVersions} {disabled}>Browse versions</Button></Inline>
 				</Stack>
 			{:else}
 				<Stack gap="sm">
-					<Inline gap="sm" align="baseline" wrap>
-						<Text variant="label">Selected version</Text>
-						<Text variant="body-sm" tone="secondary" numeric>
-							{resolvedVersion || effectiveVersionSpec}
-						</Text>
-					</Inline>
-					<Combobox
-						label="Version"
-						description={versionDescription}
-						placeholder={resolvedVersion || "Search versions and dist-tags"}
-						items={versionOptions}
-						value={versionSpec}
-						onValueChange={handleVersionSelect}
-						bind:inputValue={versionFilter}
-						disabled={disabled}
-					/>
-					{#if capped}
-						<Text variant="body-sm" tone="secondary">
-							Showing the {MAX_VISIBLE_VERSIONS} newest of {versionCount}
-							versions. Use a custom version spec to pin an older
-							version.
-						</Text>
-					{/if}
-					<Inline gap="sm">
-						<Button
-							variant="link"
-							onclick={useCustomSpec}
-							disabled={disabled}
-						>
-							Use a custom version spec
-						</Button>
-					</Inline>
+					<Combobox label="Version" description={versionDescription} placeholder={effectiveVersionSpec === "latest" ? `latest (${latestVersion})` : effectiveVersionSpec} items={versionOptions} value={versionSpec} onValueChange={handleVersionSelect} bind:inputValue={versionFilter} {disabled} />
+					<Text variant="body-sm" tone="secondary">Requested: {effectiveVersionSpec}{#if resolvedVersion && resolvedVersion !== effectiveVersionSpec} · Published version: {resolvedVersion}{/if}</Text>
+					{#if capped}<Text variant="body-sm" tone="secondary">Showing the {MAX_VISIBLE_VERSIONS} newest versions. Use a custom specification for older versions.</Text>{/if}
+					<Inline><Button variant="link" onclick={useCustomSpec} {disabled}>Use a version range or tag</Button></Inline>
 				</Stack>
 			{/if}
 		</Stack>
@@ -769,13 +681,8 @@
 							onclick={() => selectSearchResult(result)}
 							disabled={disabled}
 						>
-							<Inline
-								justify="between"
-								align="center"
-								gap="sm"
-								wrap
-							>
-								<Text variant="label">
+							<span class="result-heading">
+								<Text as="span" variant="label">
 									{result.name}
 								</Text>
 								{#if result.version}
@@ -783,9 +690,9 @@
 										v{result.version}
 									</Badge>
 								{/if}
-							</Inline>
+							</span>
 							{#if result.description}
-								<Text variant="body-sm" tone="secondary">
+								<Text as="span" variant="body-sm" tone="secondary">
 									{truncate(result.description, 120)}
 								</Text>
 							{/if}
@@ -814,26 +721,17 @@
 		</Stack>
 	{/if}
 
-	<Inline justify="between" align="center" stackAt="sm" gap="md" wrap>
-		<Text variant="body-sm" tone="secondary">
-			{#if canStart}
-				Ready to build one archive for
-				{packageName}@{effectiveVersionSpec}.
-			{:else if disabled}
-				{disabledReason}
-			{:else if customMode && customSpecError}
-				Enter a valid version spec to build the archive.
-			{:else}
-				Choose one package and a version to build the archive.
-			{/if}
-		</Text>
-		<Button variant="primary" disabled={!canStart} onclick={start}>
-			Build archive
-		</Button>
-	</Inline>
+	{#if packument}
+		<Text variant="body-sm" tone="secondary">Registry access is required to build. Peer dependencies and packages requiring install scripts may need extra steps offline.</Text>
+		<Inline gap="sm" align="center" wrap>
+			<Button variant="primary" disabled={!canStart} onclick={start}>Build bundle</Button>
+			{#if disabled}<Text variant="body-sm" tone="secondary">{disabledReason}</Text>{/if}
+		</Inline>
+	{/if}
 </Stack>
 
 <style>
+	.result-heading { display: flex; align-items: center; gap: var(--space-sm); flex-wrap: wrap; }
 	.package-result {
 		display: flex;
 		flex-direction: column;

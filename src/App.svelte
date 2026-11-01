@@ -3,12 +3,9 @@
 		Alert,
 		AppShell,
 		Container,
-		Inline,
 		Page,
 		PageHeader,
 		Section,
-		Stack,
-		Text,
 	} from "@t128n/ui";
 	import { onDestroy, onMount } from "svelte";
 
@@ -38,6 +35,7 @@
 	const runtime = createWebContainerRuntime();
 
 	let phase = $state<Phase>("idle");
+	let pickerKey = $state(0);
 	let reference = $state<PackageReference | null>(null);
 	let stage = $state<RunStage | null>(null);
 	let log = $state("");
@@ -132,7 +130,13 @@
 		}
 	}
 
+	function editConfiguration() {
+		phase = "idle";
+		failure = null;
+	}
+
 	function reset() {
+		pickerKey += 1;
 		revokeDownloadUrl();
 		phase = "idle";
 		reference = null;
@@ -163,10 +167,10 @@
 			<AppNavbar />
 		{/snippet}
 
-		<Page gap="2xl">
+		<Page gap="xl" class="task-column">
 			<PageHeader
-				title="Offline npm bundles"
-				description="Turn one npm package reference into a single tarball that installs without registry access."
+				title="Create an offline bundle"
+				description="Choose one npm package to create an archive for offline installation."
 			/>
 
 			{#if !crossOriginIsolated}
@@ -181,20 +185,16 @@
 				</Alert>
 			{/if}
 
-			{#if phase === "idle"}
-				<Section
-					title="Package"
-					description="Search the npm registry and choose one version. The archive keeps npm's resolved identity."
-				>
-					<PackagePicker
-						disabled={!crossOriginIsolated}
-						disabledReason="Cross-origin isolation is required to build an archive."
-						onStart={start}
-					/>
+			<div hidden={phase !== "idle"}>
+				<Section title="Choose a package">
+					{#key pickerKey}
+						<PackagePicker disabled={!crossOriginIsolated} disabledReason="Cross-origin isolation is required to build an archive." onStart={start} />
+					{/key}
 				</Section>
-			{:else if phase === "running" || phase === "error"}
+			</div>
+			{#if phase === "running" || phase === "error"}
 				<Section
-					title="Archive"
+					title={phase === "error" ? "Bundle could not be created" : "Creating your bundle"}
 					description={reference
 						? `${phase === "error" ? "Build failed for" : "Building"} ${reference.name}@${reference.versionSpec}.`
 						: phase === "error"
@@ -207,13 +207,12 @@
 						error={failure}
 						running={phase === "running"}
 						onRetry={retry}
-						onReset={reset}
+						onReset={editConfiguration}
 					/>
 				</Section>
 			{:else if result !== null}
 				<Section
-					title="Archive"
-					description="The archive is ready. Download it and install it offline."
+					title="Bundle ready"
 				>
 					<ResultView
 						{result}
@@ -224,24 +223,6 @@
 				</Section>
 			{/if}
 
-			{#if reference !== null && phase !== "idle" && phase !== "done"}
-				<Inline align="center" gap="sm" wrap>
-					<Text variant="body-sm" tone="secondary">
-						Selected package
-					</Text>
-					<Text variant="body-sm">
-						{reference.name}@{reference.versionSpec}
-					</Text>
-				</Inline>
-			{/if}
-
-			<Stack gap="sm">
-				<Text variant="body-sm" tone="muted">
-					One package per archive. npm resolves its dependency tree
-					inside an isolated WebContainer; lifecycle scripts never run
-					during archiving.
-				</Text>
-			</Stack>
 		</Page>
 	</AppShell>
 
