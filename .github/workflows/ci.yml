@@ -25,7 +25,6 @@ jobs:
             - name: Test
               run: |
                   bun run test:fmt
-                  bun run test:lint --threads=1
                   bun run test:knip
                   bun run test:typecheck
                   bun run test:unit
@@ -38,3 +37,21 @@ jobs:
 
             - name: Build
               run: bun run build
+
+    lint:
+        # Oxlint's allocator currently aborts on ubuntu-slim, even with one thread.
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Setup Bun
+              uses: oven-sh/setup-bun@v2
+              with:
+                  bun-version: 1.4.3
+
+            - name: Install dependencies
+              run: bun install --frozen-lockfile
+
+            - name: Lint
+              run: bun run test:lint
