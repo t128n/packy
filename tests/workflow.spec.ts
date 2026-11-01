@@ -1,9 +1,11 @@
 import { expect, test } from "@playwright/test";
 
-const PACKAGE_NAME = /@scope\/example/;
 const RESOLVED_VERSION = /Currently points to 2\.0\.0/;
 const UNPUBLISHED = /not published/;
 const REQUESTED = /Requested: latest/;
+const REQUESTED_NEXT = /Requested: next/;
+const NEXT_RESOLVED = /Currently points to 3\.0\.0-beta\.1/;
+const REQUESTED_ONE = /Requested: 1\.0\.0/;
 const NEW_RESULT = /new-result/;
 const OLD_RESULT = /old-result/;
 
@@ -45,9 +47,11 @@ test.beforeEach(async ({ page }) => {
 test("search, keyboard selection and version validation", async ({ page }) => {
 	const search = page.getByLabel("Package", { exact: true });
 	await search.fill("@scope/example");
-	await expect(
-		page.getByRole("button", { name: PACKAGE_NAME }),
-	).toBeVisible();
+	const option = page
+		.getByRole("option")
+		.filter({ hasText: "@scope/example" })
+		.first();
+	await expect(option).toBeVisible();
 	await search.press("Enter");
 	await expect(
 		page.getByRole("heading", { name: "@scope/example" }),
@@ -66,6 +70,19 @@ test("search, keyboard selection and version validation", async ({ page }) => {
 	await expect(
 		page.getByRole("button", { name: "Create bundle" }),
 	).toBeEnabled();
+});
+
+test("version selector groups dist-tags and versions", async ({ page }) => {
+	await selectFixture(page);
+	await page.getByRole("button", { name: "Open options" }).click();
+	await expect(page.getByText("Dist-tags")).toBeVisible();
+	await expect(page.getByText("Versions")).toBeVisible();
+	await page.getByRole("option").filter({ hasText: "next" }).click();
+	await expect(page.getByText(REQUESTED_NEXT)).toBeVisible();
+	await expect(page.getByText(NEXT_RESOLVED)).toBeVisible();
+	await page.getByRole("button", { name: "Open options" }).click();
+	await page.getByRole("option").filter({ hasText: "1.0.0" }).click();
+	await expect(page.getByText(REQUESTED_ONE)).toBeVisible();
 });
 
 test("mobile layout and footer stay focused", async ({ page }) => {
@@ -95,9 +112,11 @@ test("no search results explains how to continue", async ({ page }) => {
 	});
 	await page.getByLabel("Package", { exact: true }).fill("missing-package");
 	await expect(
-		page.getByText(
-			'No packages found for "missing-package". Check the spelling and try again.',
-		),
+		page
+			.getByRole("listbox")
+			.getByText(
+				'No packages found for "missing-package". Check the spelling and try again.',
+			),
 	).toBeVisible();
 });
 
@@ -126,12 +145,15 @@ test("an older search response cannot replace newer results", async ({
 	});
 	const search = page.getByLabel("Package", { exact: true });
 	await search.fill("older");
-	await expect(page.getByText("Searching the npm registry…")).toBeVisible();
 	await page.waitForTimeout(400);
 	await search.fill("newer");
-	await expect(page.getByRole("button", { name: NEW_RESULT })).toBeVisible();
+	await expect(
+		page.getByRole("option").filter({ hasText: NEW_RESULT }),
+	).toBeVisible();
 	await page.waitForTimeout(1300);
-	await expect(page.getByRole("button", { name: OLD_RESULT })).toHaveCount(0);
+	await expect(
+		page.getByRole("option").filter({ hasText: OLD_RESULT }),
+	).toHaveCount(0);
 });
 
 const fakeRuntime = `
@@ -161,7 +183,11 @@ export function createWebContainerRuntime() {
 
 async function selectFixture(page: import("@playwright/test").Page) {
 	await page.getByLabel("Package", { exact: true }).fill("@scope/example");
-	await page.getByRole("button", { name: PACKAGE_NAME }).click();
+	await page
+		.getByRole("option")
+		.filter({ hasText: "@scope/example" })
+		.first()
+		.click();
 	await expect(
 		page.getByRole("heading", { name: "@scope/example" }),
 	).toBeVisible();

@@ -21,7 +21,7 @@
 		"test:browser": "playwright test"
 	},
 	"dependencies": {
-		"@t128n/ui": "0.1.1",
+		"@t128n/ui": "0.2.0",
 		"@webcontainer/api": "^1.6.1",
 		"coi-serviceworker": "^0.1.7",
 		"ofetch": "^1.5.1",

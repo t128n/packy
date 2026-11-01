@@ -1,7 +1,6 @@
 <script lang="ts">
 	import {
 		Alert,
-		Badge,
 		Button,
 		Combobox,
 		Inline,
@@ -9,7 +8,6 @@
 		Stack,
 		Text,
 	} from "@t128n/ui";
-	import { tick } from "svelte";
 	import { valid, validRange, maxSatisfying } from "semver";
 
 	import {
@@ -139,7 +137,9 @@
 			})
 			.map(([tag, version]) => ({
 				value: tag,
-				label: `Dist-tag · ${tag} → ${version}`,
+				label: tag,
+				description: `→ ${version}`,
+				group: "Dist-tags",
 			}));
 	});
 
@@ -148,11 +148,23 @@
 			.slice(0, MAX_VISIBLE_VERSIONS)
 			.map(([version, meta]) => ({
 				value: version,
-				label: describeVersion(version, meta),
+				label: version,
+				description: describeVersion(version, meta),
+				group: "Versions",
 			}));
 
 		return [...tagOptions, ...versions];
 	});
+
+	let searchOptions = $derived(
+		searchResults.map((result) => ({
+			value: result.name,
+			label: result.name,
+			description: result.description
+				? truncate(result.description, 120)
+				: undefined,
+		})),
+	);
 
 	let searchEmptyMessage = $derived.by(() => {
 		if (
@@ -176,6 +188,13 @@
 
 		return `No packages found for "${term}". Check the spelling and try again.`;
 	});
+
+	let searchEmptyLabel = $derived(
+		searchError
+			? "Search failed. Try again."
+			: searchEmptyMessage || "Type to search npm packages.",
+	);
+
 
 	let effectiveVersionSpec = $derived(
 		customMode ? customSpec.trim() : versionSpec,
@@ -258,14 +277,6 @@
 		}
 
 		return parts.join(" · ");
-	});
-
-	let versionDescription = $derived.by(() => {
-		if (versionCount === 0) {
-			return "No published versions were found.";
-		}
-
-		return "";
 	});
 
 	let canStart = $derived(
@@ -397,13 +408,13 @@
 		}
 	}
 
-	function selectSearchResult(result: RegistrySearchResult) {
-		if (disabled) {
+	function selectPackageValue(value: string) {
+		if (!value || disabled) {
 			return;
 		}
 
 		searchTerm = "";
-		void loadPackage(result.name);
+		void loadPackage(value);
 	}
 
 	function selectPopular(name: string) {
@@ -421,9 +432,6 @@
 		}
 
 		versionSpec = value;
-
-		await tick();
-		versionFilter = "";
 	}
 
 	function useCustomSpec() {
@@ -491,7 +499,7 @@
 		version: string,
 		meta: RegistryVersion,
 	): string {
-		const parts = [`Version · ${version}`];
+		const parts: string[] = [];
 
 		if (version === latestVersion) {
 			parts.push("latest");
@@ -601,13 +609,26 @@
 			{#if isDeprecated && resolvedMeta?.deprecated}<Alert tone="warning" title="Deprecated version">{resolvedMeta.deprecated}</Alert>{/if}
 			{#if customMode}
 				<Stack gap="sm">
-					<Input label="Version specification" value={customSpec} oninput={(event) => { customSpec = event.currentTarget.value; }} description="Exact version, range, or published tag." placeholder="^18.0.0 or next" error={customSpecError} {disabled} />
+					<Input class="version-field" label="Version specification" value={customSpec} oninput={(event) => { customSpec = event.currentTarget.value; }} description="Exact version, range, or published tag." placeholder="^18.0.0 or next" error={customSpecError} {disabled} />
 					<Text variant="body-sm" tone="secondary">Requested: {summaryVersionText}</Text>
 					<Inline><Button variant="link" onclick={usePublishedVersions} {disabled}>Browse versions</Button></Inline>
 				</Stack>
 			{:else}
 				<Stack gap="sm">
-					<Combobox label="Version" description={versionDescription} placeholder={effectiveVersionSpec === "latest" ? `latest (${latestVersion})` : effectiveVersionSpec} items={versionOptions} value={versionSpec} onValueChange={handleVersionSelect} bind:inputValue={versionFilter} {disabled} />
+					<Combobox
+						class="version-field"
+						label="Version"
+						items={versionOptions}
+						groups={["Dist-tags", "Versions"]}
+						value={versionSpec}
+						onValueChange={handleVersionSelect}
+						onOpenChange={(open) => {
+							if (open) versionFilter = "";
+						}}
+						placeholder={resolvedVersion || latestVersion}
+						bind:inputValue={versionFilter}
+						{disabled}
+					/>
 					<Text variant="body-sm" tone="secondary">Requested: {effectiveVersionSpec}{#if resolvedVersion && resolvedVersion !== effectiveVersionSpec} · Currently points to {resolvedVersion}; npm resolves the tag when building.{/if}</Text>
 					{#if capped}<Text variant="body-sm" tone="secondary">Showing the {MAX_VISIBLE_VERSIONS} newest versions. Use a custom specification for older versions.</Text>{/if}
 					<Inline><Button variant="link" onclick={useCustomSpec} {disabled}>Use a version range or tag</Button></Inline>
@@ -616,28 +637,18 @@
 		</Stack>
 	{:else}
 		<Stack gap="md">
-			<Input
+			<Combobox
 				label="Package"
 				placeholder="Search npm packages…"
-				value={searchTerm}
-				oninput={(event) => {
-					searchTerm = event.currentTarget.value;
-				}}
-				onkeydown={(event) => {
-					const first = searchResults.at(0);
-
-					if (event.key === "Enter" && !event.isComposing && first) {
-						event.preventDefault();
-						selectSearchResult(first);
-					}
-				}}
-				disabled={disabled}
+				items={searchOptions}
+				bind:inputValue={searchTerm}
+				bind:value={pendingPackage}
+				onValueChange={selectPackageValue}
+				filterMode="manual"
+				loading={searchLoading}
+				emptyLabel={searchEmptyLabel}
+				{disabled}
 			/>
-			{#if searchLoading}
-				<Text variant="body-sm" tone="secondary" aria-live="polite">
-					Searching the npm registry…
-				</Text>
-			{/if}
 			{#if searchError}
 				<Stack gap="sm">
 					<Alert tone="danger" title="Could not search npm">
@@ -652,41 +663,6 @@
 							Retry search
 						</Button>
 					</Inline>
-				</Stack>
-			{:else if searchEmptyMessage}
-				<Text variant="body-sm" tone="secondary" aria-live="polite">
-					{searchEmptyMessage}
-				</Text>
-			{/if}
-			{#if searchResults.length > 0}
-				<Stack gap="xs">
-					<Text variant="body-sm" tone="secondary" aria-live="polite">
-						{searchResults.length} {searchResults.length === 1 ? "result" : "results"}
-					</Text>
-					{#each searchResults as result (result.name)}
-						<button
-							class="package-result"
-							type="button"
-							onclick={() => selectSearchResult(result)}
-							disabled={disabled}
-						>
-							<span class="result-heading">
-								<Text as="span" variant="label">
-									{result.name}
-								</Text>
-								{#if result.version}
-									<Badge tone="neutral">
-										v{result.version}
-									</Badge>
-								{/if}
-							</span>
-							{#if result.description}
-								<Text as="span" variant="body-sm" tone="secondary">
-									{truncate(result.description, 120)}
-								</Text>
-							{/if}
-						</button>
-					{/each}
 				</Stack>
 			{/if}
 			{#if searchTerm.trim().length === 0}
@@ -720,39 +696,7 @@
 </Stack>
 
 <style>
-	.result-heading { display: flex; align-items: center; gap: var(--space-sm); flex-wrap: wrap; }
-	.package-result {
-		display: flex;
-		flex-direction: column;
-		align-items: flex-start;
-		gap: var(--space-xs);
-		width: 100%;
-		padding: var(--space-sm) var(--space-md);
-		border: 0;
-		border-bottom: var(--border-width) solid var(--color-border);
-		border-radius: var(--radius-md);
-		background: transparent;
-		color: var(--color-text-primary);
-		font-family: var(--font-family-sans);
-		text-align: left;
-		cursor: pointer;
-	}
-
-	.package-result:last-child {
-		border-bottom: 0;
-	}
-
-	.package-result:hover:not(:disabled) {
-		background: var(--color-surface-subtle);
-	}
-
-	.package-result:focus-visible {
-		outline: var(--border-width-emphasis) solid var(--color-focus);
-		outline-offset: calc(-1 * var(--border-width-emphasis));
-	}
-
-	.package-result:disabled {
-		color: var(--color-disabled-text);
-		cursor: not-allowed;
+	:global(.version-field) {
+		max-width: 28rem;
 	}
 </style>

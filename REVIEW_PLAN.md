@@ -1,12 +1,14 @@
 # Review implementation plan
 
-Status: independent review changes implemented; upstream Combobox integration
-pending. The branch was fast-forwarded to `b38b5a1` (`chore: add reviews`).
+Status: independent review changes implemented and upstream Combobox integrated
+through `@t128n/ui@0.2.0`. The branch was fast-forwarded to `b38b5a1`
+(`chore: add reviews`).
 
 Completed independently: layout and copy refinement, footer cleanup, CI split,
 build-failure guidance, download feedback, offline-install caveats, focus
-management, unit/browser coverage, and refreshed previews. Still pending: the
-upstream Combobox integration and participant usability testing.
+management, unit/browser coverage, and refreshed previews. The grouped/async
+Combobox is now used for package search and version selection. Still pending:
+participant usability testing and broader offline-install verification.
 
 Sources:
 

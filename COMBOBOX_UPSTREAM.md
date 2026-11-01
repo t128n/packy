@@ -1,5 +1,7 @@
 # `@t128n/ui` Combobox fix — implementation instructions
 
+Status: implemented in `@t128n/ui@0.2.0` (upstream PR #72, release PR #71).
+
 Target repository: `github.com/t128n/design`
 Target component: `packages/ui/src/lib/Combobox.svelte`
 Package: `@t128n/ui`
