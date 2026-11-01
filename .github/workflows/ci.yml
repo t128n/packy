@@ -25,7 +25,7 @@ jobs:
             - name: Test
               run: |
                   bun run test:fmt
-                  bun run test:lint
+                  bun run test:lint --threads=1
                   bun run test:knip
                   bun run test:typecheck
                   bun run test:unit
