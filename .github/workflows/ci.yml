@@ -10,6 +10,10 @@ permissions:
 jobs:
     test:
         runs-on: ubuntu-latest
+        # <review>
+        # Use ubuntu-slim instead to reduce costs.
+        # See https://github.blog/changelog/2025-10-28-1-vcpu-linux-runner-now-available-in-github-actions-in-public-preview/
+        # </review>
         steps:
             - name: Checkout
               uses: actions/checkout@v4
