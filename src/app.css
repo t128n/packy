@@ -13,7 +13,7 @@ body {
 	margin: 0;
 	background: var(--color-canvas);
 	color: var(--color-text-primary);
-	font-family: var(--font-family-sans);
+	font-family: var(--font-sans);
 	font-size: var(--font-size-body);
 	font-weight: var(--font-weight-regular);
 	line-height: var(--font-leading-body);
@@ -68,43 +68,22 @@ a {
 }
 
 .page {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-6);
 	width: 100%;
 	max-width: calc(
-		var(--layout-shell) + var(--layout-page-padding) +
+		var(--layout-settings-max) + var(--layout-page-padding) +
 			var(--layout-page-padding)
 	);
 	margin-inline: auto;
 	padding: var(--space-6) var(--layout-page-padding) var(--space-8);
 }
 
-.page-intro {
+.app-state {
 	display: flex;
 	flex-direction: column;
-	gap: var(--space-2);
-}
-
-.eyebrow {
-	font-family: var(--font-family-mono);
-	letter-spacing: var(--font-tracking-caps);
-	text-transform: uppercase;
-}
-
-.workspace-grid {
-	display: grid;
-	grid-template-columns: minmax(0, 1fr) var(--layout-aside);
-	gap: var(--space-6);
-	align-items: start;
-	margin-top: var(--space-4);
-}
-
-.task-column {
-	display: flex;
-	flex-direction: column;
-	gap: var(--space-5);
-	min-width: 0;
-}
-
-.brief-column {
+	gap: var(--space-4);
 	min-width: 0;
 }
 
@@ -118,7 +97,7 @@ a {
 }
 
 .mono {
-	font-family: var(--font-family-mono);
+	font-family: var(--font-mono);
 	font-variant-numeric: tabular-nums;
 }
 
@@ -180,13 +159,6 @@ a {
 @media (hover: hover) and (pointer: fine) {
 	.input:hover:not(:disabled) {
 		border-color: var(--color-text-secondary);
-	}
-}
-
-@media (max-width: 1023px) {
-	.workspace-grid {
-		grid-template-columns: minmax(0, 1fr);
-		gap: var(--space-5);
 	}
 }
 

@@ -60,25 +60,26 @@
 </script>
 
 <div class="result-view">
-	<div class="receipt">
-		<span class="receipt__eyebrow">Archive</span>
-		<p class="receipt__name">{result.filename}</p>
-		<div class="receipt__meta">
-			<code class="inline-code">{result.name}@{result.version}</code>
-			<span class="receipt__size">
-				{formatBytes(result.bytes.byteLength)} compressed
-			</span>
+	<div class="artifact">
+		<p class="artifact__name">{result.filename}</p>
+		<p class="artifact__meta">
+			<span class="mono">{result.name}@{result.version}</span>
+			<span class="artifact__sep" aria-hidden="true">·</span>
+			<span>{formatBytes(result.bytes.byteLength)} compressed</span>
+		</p>
+		<div class="artifact__actions">
+			<Button
+				variant="primary"
+				disabled={!downloadUrl}
+				onclick={onDownload}
+			>
+				<DownloadIcon class="button-icon" />
+				Download bundle
+			</Button>
+			<Button variant="ghost" onclick={onReset}>
+				Create another bundle
+			</Button>
 		</div>
-	</div>
-
-	<div class="result-view__actions">
-		<Button variant="primary" disabled={!downloadUrl} onclick={onDownload}>
-			<DownloadIcon class="button-icon" />
-			Download bundle
-		</Button>
-		<Button variant="secondary" onclick={onReset}>
-			Create another bundle
-		</Button>
 	</div>
 
 	{#if downloadError}
@@ -110,60 +111,57 @@
 			<p class="install__error" role="alert">{copyError}</p>
 		{/if}
 	</div>
-
-	<p class="result-view__note">
-		Required dependencies are included. Optional peers and native binaries may
-		need additional preparation before an offline install.
-	</p>
 </div>
 
 <style>
 	.result-view {
 		display: flex;
 		flex-direction: column;
-		gap: var(--space-5);
+		gap: var(--space-6);
 	}
 
-	.receipt {
+	.artifact {
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-2);
-		padding-block: var(--space-3);
-		border-top: var(--border-width) solid var(--color-border-subtle);
-		border-bottom: var(--border-width) solid var(--color-border-subtle);
 	}
 
-	.receipt__eyebrow {
-		color: var(--color-text-muted);
-		font-family: var(--font-family-mono);
-		font-size: var(--font-size-caption);
-		line-height: var(--font-leading-caption);
-		letter-spacing: var(--font-tracking-caps);
-		text-transform: uppercase;
-	}
-
-	.receipt__name {
+	.artifact__name {
 		margin: 0;
 		color: var(--color-text-primary);
-		font-family: var(--font-family-mono);
-		font-size: var(--font-size-heading-md);
+		font-family: var(--font-mono);
+		font-size: var(--font-size-heading-sm);
 		font-weight: var(--font-weight-regular);
-		line-height: var(--font-leading-heading-md);
+		line-height: var(--font-leading-heading-sm);
 		overflow-wrap: anywhere;
 	}
 
-	.receipt__meta {
+	.artifact__meta {
 		display: flex;
 		align-items: center;
-		gap: var(--space-3);
+		gap: var(--space-2);
 		flex-wrap: wrap;
-	}
-
-	.receipt__size {
+		margin: 0;
 		color: var(--color-text-secondary);
 		font-size: var(--font-size-body);
 		font-variant-numeric: tabular-nums;
 		line-height: var(--font-leading-body);
+	}
+
+	.artifact__sep {
+		color: var(--color-text-muted);
+	}
+
+	.artifact__actions,
+	.install__actions {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+		flex-wrap: wrap;
+	}
+
+	.artifact__actions {
+		margin-top: var(--space-2);
 	}
 
 	.inline-code {
@@ -172,17 +170,9 @@
 		border-radius: var(--radius-sm);
 		background: var(--color-surface);
 		color: var(--color-text-primary);
-		font-family: var(--font-family-mono);
+		font-family: var(--font-mono);
 		font-size: var(--font-size-mono);
 		line-height: var(--font-leading-mono);
-	}
-
-	.result-view__actions,
-	.install__actions {
-		display: flex;
-		align-items: center;
-		gap: var(--space-2);
-		flex-wrap: wrap;
 	}
 
 	.install {
@@ -214,7 +204,7 @@
 		border: var(--border-width) solid var(--color-border-subtle);
 		background: var(--color-surface);
 		color: var(--color-text-primary);
-		font-family: var(--font-family-mono);
+		font-family: var(--font-mono);
 		font-size: var(--font-size-mono);
 		line-height: var(--font-leading-mono);
 		white-space: pre-wrap;
@@ -233,14 +223,6 @@
 	.install__error {
 		margin: 0;
 		color: var(--color-error);
-		font-size: var(--font-size-body);
-		line-height: var(--font-leading-body);
-	}
-
-	.result-view__note {
-		max-width: var(--layout-measure);
-		margin: 0;
-		color: var(--color-text-secondary);
 		font-size: var(--font-size-body);
 		line-height: var(--font-leading-body);
 	}

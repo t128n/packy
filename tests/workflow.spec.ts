@@ -82,15 +82,12 @@ test("version selector groups dist-tags and versions", async ({ page }) => {
 	await expect(page.getByTestId("version-summary")).toContainText("1.0.0");
 });
 
-test("mobile layout and footer stay focused", async ({ page }) => {
+test("mobile layout stays focused", async ({ page }) => {
 	await page.setViewportSize({ width: 320, height: 720 });
 	await expect(
 		page.getByRole("heading", { name: "Create an offline bundle" }),
 	).toBeVisible();
-	await expect(page.locator("footer")).toContainText("© 2026 Torben Haack");
-	await expect(page.locator("footer")).not.toContainText(
-		"one package per archive",
-	);
+	await expect(page.getByText("One package per archive.")).toBeVisible();
 	expect(
 		await page.evaluate(
 			() => document.documentElement.scrollWidth <= innerWidth,

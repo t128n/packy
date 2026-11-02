@@ -132,7 +132,7 @@
 	{#if log.trim().length === 0}
 		<p class="run-view__empty">No output yet.</p>
 	{:else}
-		<Collapsible title="Technical details">
+		<Collapsible title="Build log">
 			<pre class="code-block"><code>{log}</code></pre>
 		</Collapsible>
 	{/if}
@@ -193,7 +193,7 @@
 	}
 
 	.stage__number {
-		font-family: var(--font-family-mono);
+		font-family: var(--font-mono);
 		font-size: var(--font-size-caption);
 		font-variant-numeric: tabular-nums;
 	}
@@ -269,7 +269,7 @@
 		border: var(--border-width) solid var(--color-border-subtle);
 		background: var(--color-surface);
 		color: var(--color-text-primary);
-		font-family: var(--font-family-mono);
+		font-family: var(--font-mono);
 		font-size: var(--font-size-mono);
 		line-height: var(--font-leading-mono);
 		white-space: pre-wrap;

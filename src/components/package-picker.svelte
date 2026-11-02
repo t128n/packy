@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { valid, validRange, maxSatisfying } from "semver";
-	import Add from "~icons/carbon/add";
 
 	import Alert from "~/components/ui/alert.svelte";
 	import Button from "~/components/ui/button.svelte";
@@ -31,14 +30,6 @@
 		onStart,
 	}: Props = $props();
 
-	const POPULAR_PACKAGES = [
-		"react",
-		"vue",
-		"vite",
-		"typescript",
-		"zod",
-		"lodash",
-	] as const;
 	const MAX_VISIBLE_VERSIONS = 300;
 	const SEARCH_DEBOUNCE_MS = 300;
 	const SEARCH_MIN_LENGTH = 3;
@@ -393,14 +384,6 @@
 		void loadPackage(value);
 	}
 
-	function selectPopular(name: string) {
-		if (disabled) {
-			return;
-		}
-
-		searchTerm = "";
-		void loadPackage(name);
-	}
 
 	async function handleVersionSelect(value: string) {
 		if (!value || disabled) {
@@ -574,9 +557,6 @@
 		<Stack gap="xl">
 			<div class="package-header">
 				<Stack gap="xs">
-					<Text variant="caption" tone="muted">
-						Selected package
-					</Text>
 					<Text variant="subheading" as="h2">{packageName}</Text>
 					{#if packument.description}
 						<Text variant="body-sm" tone="secondary">
@@ -584,7 +564,7 @@
 						</Text>
 					{/if}
 				</Stack>
-				<Button variant="secondary" onclick={clearSelection} {disabled}>
+				<Button variant="ghost" onclick={clearSelection} {disabled}>
 					Change package
 				</Button>
 			</div>
@@ -622,15 +602,6 @@
 							</p>
 						{/if}
 					</div>
-					<Inline>
-						<Button
-							variant="link"
-							onclick={usePublishedVersions}
-							{disabled}
-						>
-							Browse versions
-						</Button>
-					</Inline>
 				{:else}
 					<Combobox
 						label="Version"
@@ -646,31 +617,34 @@
 						triggerLabel="Open options"
 						{disabled}
 					/>
-					<Inline>
+				{/if}
+
+				<p class="version-summary" data-testid="version-summary">
+					Requested: <span class="mono">{effectiveVersionSpec}</span>
+					<span class="version-summary__sep" aria-hidden="true">·</span>
+					Resolves to:
+					<span class="mono">{resolvedVersion || "at build time"}</span>
+					{#if selectedSize !== undefined}
+						<span class="version-summary__sep" aria-hidden="true">·</span>
+						{formatBytes(selectedSize)} unpacked
+					{/if}
+				</p>
+
+				<Inline>
+					{#if customMode}
+						<Button
+							variant="link"
+							onclick={usePublishedVersions}
+							{disabled}
+						>
+							Browse versions
+						</Button>
+					{:else}
 						<Button variant="link" onclick={useCustomSpec} {disabled}>
 							Use a version range or tag
 						</Button>
-					</Inline>
-				{/if}
-
-				<dl class="version-summary" data-testid="version-summary">
-					<div class="version-summary__row">
-						<dt>Requested</dt>
-						<dd class="mono">{effectiveVersionSpec}</dd>
-					</div>
-					<div class="version-summary__row">
-						<dt>Resolves to</dt>
-						<dd class="mono">
-							{resolvedVersion || "At build time"}
-						</dd>
-					</div>
-					{#if selectedSize !== undefined}
-						<div class="version-summary__row">
-							<dt>Unpacked size</dt>
-							<dd>{formatBytes(selectedSize)}</dd>
-						</div>
 					{/if}
-				</dl>
+				</Inline>
 
 				{#if capped}
 					<Text variant="body-sm" tone="secondary">
@@ -684,84 +658,51 @@
 				<Button variant="primary" disabled={!canStart} onclick={start}>
 					Create bundle
 				</Button>
-				<Text variant="body-sm" tone="secondary">
-					Registry access is required to build. One package per archive.
-				</Text>
 			</div>
 			{#if disabled}
 				<Text variant="body-sm" tone="secondary">{disabledReason}</Text>
 			{/if}
 		</Stack>
 	{:else}
-		<Stack gap="xl">
-			<Stack gap="sm">
-				<Text variant="subheading" as="h2">Choose a package</Text>
-				<Text variant="body-sm" tone="secondary">
-					Search the npm registry, or start with a popular package.
-					Required dependencies are bundled automatically.
-				</Text>
-			</Stack>
-
-			<Stack gap="md">
-				<Combobox
-					label="Package"
-					placeholder="Search npm packages…"
-					items={searchOptions}
-					value={pendingPackage}
-					onValueChange={selectPackageValue}
-					onInputValueChange={(value) => {
-						searchTerm = value;
-					}}
-					onOpenChange={(open) => {
-						if (open) void searchPackages(searchTerm);
-					}}
-					filterMode="manual"
-					loading={searchLoading}
-					emptyLabel={searchEmptyLabel}
-					triggerLabel="Browse packages"
-					clearQueryOnClose={false}
-					{disabled}
-				/>
-				{#if searchError}
-					<Stack gap="sm">
-						<Alert tone="danger" title="Could not search npm">
-							{searchError}
-						</Alert>
-						<Inline gap="sm">
-							<Button
-								variant="link"
-								onclick={retrySearch}
-								disabled={disabled}
-							>
-								Retry search
-							</Button>
-						</Inline>
-					</Stack>
-				{/if}
-				{#if searchTerm.trim().length === 0}
-					<div class="quick-picks">
-						<p class="quick-picks__label">Popular</p>
-						<ul class="quick-picks__list">
-							{#each POPULAR_PACKAGES as name}
-								<li>
-									<button
-										class="quick-pick"
-										type="button"
-										onclick={() => selectPopular(name)}
-										disabled={disabled}
-									>
-										<span class="quick-pick__name">{name}</span>
-										<Add class="quick-pick__icon" />
-									</button>
-								</li>
-							{/each}
-						</ul>
-					</div>
-				{/if}
-				<Text variant="body-sm" tone="secondary">
-					One package per archive. Registry access is required to build.
-				</Text>
-			</Stack>
+		<Stack gap="md">
+			<Combobox
+				label="Package"
+				placeholder="Search npm packages…"
+				items={searchOptions}
+				value={pendingPackage}
+				onValueChange={selectPackageValue}
+				onInputValueChange={(value) => {
+					searchTerm = value;
+				}}
+				onOpenChange={(open) => {
+					if (open) void searchPackages(searchTerm);
+				}}
+				filterMode="manual"
+				loading={searchLoading}
+				emptyLabel={searchEmptyLabel}
+				triggerLabel="Browse packages"
+				clearQueryOnClose={false}
+				{disabled}
+			/>
+			{#if searchError}
+				<Stack gap="sm">
+					<Alert tone="danger" title="Could not search npm">
+						{searchError}
+					</Alert>
+					<Inline gap="sm">
+						<Button
+							variant="link"
+							onclick={retrySearch}
+							disabled={disabled}
+						>
+							Retry search
+						</Button>
+					</Inline>
+				</Stack>
+			{/if}
+			<Text variant="body-sm" tone="secondary">
+				One package per archive.
+			</Text>
 		</Stack>
 	{/if}
 </Stack>
@@ -783,98 +724,14 @@
 	}
 
 	.version-summary {
-		display: flex;
-		flex-direction: column;
 		margin: 0;
-		border-top: var(--border-width) solid var(--color-border-subtle);
-	}
-
-	.version-summary__row {
-		display: grid;
-		grid-template-columns: minmax(0, 1fr) auto;
-		gap: var(--space-3);
-		padding: var(--space-2) 0;
-		border-bottom: var(--border-width) solid var(--color-border-subtle);
-	}
-
-	.version-summary__row dt {
 		color: var(--color-text-secondary);
 		font-size: var(--font-size-body);
+		line-height: var(--font-leading-body);
 	}
 
-	.version-summary__row dd {
-		margin: 0;
-		text-align: right;
-	}
-
-	.quick-picks {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-2);
-	}
-
-	.quick-picks__label {
-		margin: 0;
+	.version-summary__sep {
 		color: var(--color-text-muted);
-		font-family: var(--font-family-mono);
-		font-size: var(--font-size-caption);
-		line-height: var(--font-leading-caption);
-		letter-spacing: var(--font-tracking-caps);
-		text-transform: uppercase;
-	}
-
-	.quick-picks__list {
-		display: grid;
-		grid-template-columns: repeat(2, minmax(0, 1fr));
-		gap: 0 var(--space-5);
-		margin: 0;
-		padding: 0;
-		list-style: none;
-		border-top: var(--border-width) solid var(--color-border-subtle);
-	}
-
-	.quick-pick {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: var(--space-2);
-		width: 100%;
-		min-height: var(--size-control-lg);
-		padding: 0;
-		border: 0;
-		border-bottom: var(--border-width) solid var(--color-border-subtle);
-		background: transparent;
-		color: var(--color-text-primary);
-		font-family: var(--font-family-mono);
-		font-size: var(--font-size-body);
-		text-align: left;
-		cursor: pointer;
-	}
-
-	.quick-pick :global(svg) {
-		width: var(--icon-sm);
-		height: var(--icon-sm);
-		color: var(--color-text-muted);
-	}
-
-	@media (hover: hover) and (pointer: fine) {
-		.quick-pick:hover {
-			background: var(--color-surface);
-		}
-
-		.quick-pick:hover :global(svg) {
-			color: var(--color-primary);
-		}
-	}
-
-	.quick-pick:focus-visible {
-		outline: var(--border-width-emphasis) solid var(--color-primary);
-		outline-offset: calc(var(--border-width) * -1);
-	}
-
-	.quick-pick:disabled {
-		color: var(--color-text-disabled);
-		cursor: not-allowed;
 	}
 
 	.action-row {
@@ -882,11 +739,7 @@
 		align-items: center;
 		gap: var(--space-4);
 		flex-wrap: wrap;
+		margin-top: var(--space-2);
 	}
 
-	@media (max-width: 639px) {
-		.quick-picks__list {
-			grid-template-columns: minmax(0, 1fr);
-		}
-	}
 </style>

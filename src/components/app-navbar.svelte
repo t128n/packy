@@ -20,9 +20,6 @@
 			<span class="brand__wordmark">packy</span>
 		</a>
 
-		<span class="app-bar__divider" aria-hidden="true"></span>
-		<span class="app-bar__context">Offline npm bundles</span>
-
 		<span class="app-bar__spacer"></span>
 
 		<nav aria-label="Main">
@@ -76,7 +73,7 @@
 		gap: var(--space-3);
 		width: 100%;
 		max-width: calc(
-			var(--layout-shell) + var(--layout-page-padding) +
+			var(--layout-settings-max) + var(--layout-page-padding) +
 				var(--layout-page-padding)
 		);
 		min-height: var(--layout-app-bar);
@@ -98,21 +95,6 @@
 		font-weight: var(--font-weight-semibold);
 		line-height: var(--font-leading-none);
 		letter-spacing: var(--font-tracking-heading-md);
-	}
-
-	.app-bar__divider {
-		width: var(--border-width);
-		height: var(--space-4);
-		background: var(--color-app-bar-divider);
-	}
-
-	.app-bar__context {
-		color: var(--color-app-bar-text-secondary);
-		font-family: var(--font-family-mono);
-		font-size: var(--font-size-caption);
-		line-height: var(--font-leading-caption);
-		letter-spacing: var(--font-tracking-caps);
-		text-transform: uppercase;
 	}
 
 	.app-bar__spacer {
@@ -178,13 +160,6 @@
 		.icon-button:hover {
 			background: var(--color-app-bar-raised);
 			color: var(--color-app-bar-text);
-		}
-	}
-
-	@media (max-width: 800px) {
-		.app-bar__divider,
-		.app-bar__context {
-			display: none;
 		}
 	}
 

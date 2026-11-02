@@ -50,7 +50,7 @@
 
 	/* Type */
 	--font-sans:
-		"Geist Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+		"Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 	--font-mono: "Geist Mono", ui-monospace, SFMono-Regular, monospace;
 	--font-size-caption: 0.75rem;
 	--font-size-body: 0.875rem;
@@ -207,12 +207,8 @@
 
 /* Project extensions for packy. Keep literal values in this token file. */
 :root {
-	--layout-shell: 72rem;
-	--layout-aside: 17.5rem;
 	--layout-code-max: 20rem;
-	--layout-menu-min: 16rem;
 	--layout-menu-max: 20rem;
-	--layout-input-icon-offset: 2.5rem;
 	--border-width: 1px;
 	--border-width-emphasis: 2px;
 	--font-weight-medium: 500;

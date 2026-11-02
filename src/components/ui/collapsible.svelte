@@ -40,7 +40,6 @@
 		padding: 0;
 		border: 0;
 		border-top: var(--border-width) solid var(--color-border-subtle);
-		border-bottom: var(--border-width) solid var(--color-border-subtle);
 		background: transparent;
 		color: var(--color-text-primary);
 		font-family: inherit;

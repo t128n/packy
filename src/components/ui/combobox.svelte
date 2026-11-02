@@ -426,7 +426,7 @@
 	:global(.combobox__group-heading) {
 		padding: var(--space-2) var(--space-2) var(--space-1);
 		color: var(--color-text-muted);
-		font-family: var(--font-family-mono);
+		font-family: var(--font-mono);
 		font-size: var(--font-size-caption);
 		font-weight: var(--font-weight-regular);
 		letter-spacing: var(--font-tracking-caps);
