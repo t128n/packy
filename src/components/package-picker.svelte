@@ -1,16 +1,13 @@
 <script lang="ts">
-	import {
-		Alert,
-		Button,
-		Combobox,
-		Icon,
-		Inline,
-		Input,
-		Stack,
-		Text,
-	} from "@t128n/ui";
 	import { valid, validRange, maxSatisfying } from "semver";
 	import Add from "~icons/carbon/add";
+
+	import Alert from "~/components/ui/alert.svelte";
+	import Button from "~/components/ui/button.svelte";
+	import Combobox from "~/components/ui/combobox.svelte";
+	import Inline from "~/components/ui/inline.svelte";
+	import Stack from "~/components/ui/stack.svelte";
+	import Text from "~/components/ui/text.svelte";
 
 	import {
 		compareVersionsDesc,
@@ -62,7 +59,6 @@
 	let pendingPackage = $state("");
 
 	let versionSpec = $state("latest");
-	let versionFilter = $state("");
 	let customMode = $state(false);
 	let customSpec = $state("");
 
@@ -369,7 +365,6 @@
 			packument = data;
 			packageName = data.name;
 			versionSpec = "latest";
-			versionFilter = "";
 			customMode = false;
 			customSpec = "";
 			searchTerm = "";
@@ -393,6 +388,7 @@
 			return;
 		}
 
+		pendingPackage = value;
 		searchTerm = "";
 		void loadPackage(value);
 	}
@@ -417,14 +413,12 @@
 	function useCustomSpec() {
 		customMode = true;
 		customSpec = versionSpec;
-		versionFilter = "";
 	}
 
 	function usePublishedVersions() {
 		customMode = false;
 		customSpec = "";
 		versionSpec = "latest";
-		versionFilter = "";
 	}
 
 	function retrySearch() {
@@ -457,7 +451,6 @@
 		packageError = "";
 		pendingPackage = "";
 		versionSpec = "latest";
-		versionFilter = "";
 		customMode = false;
 		customSpec = "";
 		searchTerm = "";
@@ -556,9 +549,9 @@
 
 <Stack gap="xl">
 	{#if packageLoading}
-		<Text variant="body-sm" tone="secondary" aria-live="polite">
+		<p class="status" aria-live="polite">
 			Loading {pendingPackage} from the npm registry…
-		</Text>
+		</p>
 	{:else if packageError}
 		<Stack gap="sm">
 			<Alert tone="danger" title="Could not load package">
@@ -579,38 +572,85 @@
 		</Stack>
 	{:else if packument}
 		<Stack gap="xl">
-			<Inline justify="between" align="start" gap="md" wrap>
+			<div class="package-header">
 				<Stack gap="xs">
-					<Text variant="caption" tone="secondary">
+					<Text variant="caption" tone="muted">
 						Selected package
 					</Text>
 					<Text variant="subheading" as="h2">{packageName}</Text>
-					{#if packument.description}<Text variant="body-sm" tone="secondary">{packument.description}</Text>{/if}
+					{#if packument.description}
+						<Text variant="body-sm" tone="secondary">
+							{packument.description}
+						</Text>
+					{/if}
 				</Stack>
-				<Button variant="secondary" onclick={clearSelection} {disabled}>Change package</Button>
-			</Inline>
+				<Button variant="secondary" onclick={clearSelection} {disabled}>
+					Change package
+				</Button>
+			</div>
 
-			{#if isDeprecated && resolvedMeta?.deprecated}<Alert tone="warning" title="Deprecated version">{resolvedMeta.deprecated}</Alert>{/if}
+			{#if isDeprecated && resolvedMeta?.deprecated}
+				<Alert tone="warning" title="Deprecated version">
+					{resolvedMeta.deprecated}
+				</Alert>
+			{/if}
 
 			<Stack gap="md">
 				{#if customMode}
-					<Input label="Version specification" value={customSpec} oninput={(event) => { customSpec = event.currentTarget.value; }} description="Exact version, range, or published tag." placeholder="^18.0.0 or next" error={customSpecError} {disabled} />
-					<Inline><Button variant="link" onclick={usePublishedVersions} {disabled}>Browse versions</Button></Inline>
+					<div class="field">
+						<label class="field__label" for="version-spec">
+							Version specification
+						</label>
+						<input
+							id="version-spec"
+							class="input"
+							value={customSpec}
+							oninput={(event) => {
+								customSpec = event.currentTarget.value;
+							}}
+							placeholder="^18.0.0 or next"
+							disabled={disabled}
+							aria-describedby="version-spec-help"
+							aria-invalid={customSpecError ? "true" : undefined}
+						/>
+						<p class="field__help" id="version-spec-help">
+							Exact version, range, or published tag.
+						</p>
+						{#if customSpecError}
+							<p class="field__error" role="alert">
+								{customSpecError}
+							</p>
+						{/if}
+					</div>
+					<Inline>
+						<Button
+							variant="link"
+							onclick={usePublishedVersions}
+							{disabled}
+						>
+							Browse versions
+						</Button>
+					</Inline>
 				{:else}
 					<Combobox
 						label="Version"
+						placeholder={resolvedVersion || latestVersion}
 						items={versionOptions}
 						groups={["Dist-tags", "Versions"]}
 						value={versionSpec}
 						onValueChange={handleVersionSelect}
-						onOpenChange={(open) => {
-							if (open) versionFilter = "";
-						}}
-						placeholder={resolvedVersion || latestVersion}
-						bind:inputValue={versionFilter}
+						filterMode="client"
+						clearQueryOnClose
+						restoreValueOnClose
+						selectOnFocus
+						triggerLabel="Open options"
 						{disabled}
 					/>
-					<Inline><Button variant="link" onclick={useCustomSpec} {disabled}>Use a version range or tag</Button></Inline>
+					<Inline>
+						<Button variant="link" onclick={useCustomSpec} {disabled}>
+							Use a version range or tag
+						</Button>
+					</Inline>
 				{/if}
 
 				<dl class="version-summary" data-testid="version-summary">
@@ -667,12 +707,19 @@
 					label="Package"
 					placeholder="Search npm packages…"
 					items={searchOptions}
-					bind:inputValue={searchTerm}
-					bind:value={pendingPackage}
+					value={pendingPackage}
 					onValueChange={selectPackageValue}
+					onInputValueChange={(value) => {
+						searchTerm = value;
+					}}
+					onOpenChange={(open) => {
+						if (open) void searchPackages(searchTerm);
+					}}
 					filterMode="manual"
 					loading={searchLoading}
 					emptyLabel={searchEmptyLabel}
+					triggerLabel="Browse packages"
+					clearQueryOnClose={false}
 					{disabled}
 				/>
 				{#if searchError}
@@ -693,9 +740,7 @@
 				{/if}
 				{#if searchTerm.trim().length === 0}
 					<div class="quick-picks">
-						<Text variant="caption" tone="secondary" class="quick-picks__label">
-							Popular
-						</Text>
+						<p class="quick-picks__label">Popular</p>
 						<ul class="quick-picks__list">
 							{#each POPULAR_PACKAGES as name}
 								<li>
@@ -706,7 +751,7 @@
 										disabled={disabled}
 									>
 										<span class="quick-pick__name">{name}</span>
-										<Icon icon={Add} size={16} class="quick-pick__icon" />
+										<Add class="quick-pick__icon" />
 									</button>
 								</li>
 							{/each}
@@ -722,24 +767,39 @@
 </Stack>
 
 <style>
+	.status {
+		margin: 0;
+		color: var(--color-text-secondary);
+		font-size: var(--font-size-body);
+		line-height: var(--font-leading-body);
+	}
+
+	.package-header {
+		display: flex;
+		align-items: flex-start;
+		justify-content: space-between;
+		gap: var(--space-4);
+		flex-wrap: wrap;
+	}
+
 	.version-summary {
 		display: flex;
 		flex-direction: column;
 		margin: 0;
-		border-top: var(--border-width) solid var(--color-border);
+		border-top: var(--border-width) solid var(--color-border-subtle);
 	}
 
 	.version-summary__row {
 		display: grid;
 		grid-template-columns: minmax(0, 1fr) auto;
-		gap: var(--space-md);
-		padding: var(--space-sm) 0;
-		border-bottom: var(--border-width) solid var(--color-border);
+		gap: var(--space-3);
+		padding: var(--space-2) 0;
+		border-bottom: var(--border-width) solid var(--color-border-subtle);
 	}
 
 	.version-summary__row dt {
 		color: var(--color-text-secondary);
-		font-size: var(--font-size-body-sm);
+		font-size: var(--font-size-body);
 	}
 
 	.version-summary__row dd {
@@ -747,20 +807,18 @@
 		text-align: right;
 	}
 
-	.mono {
-		font-family: var(--font-family-mono);
-		font-variant-numeric: tabular-nums;
-	}
-
 	.quick-picks {
 		display: flex;
 		flex-direction: column;
-		gap: var(--space-sm);
+		gap: var(--space-2);
 	}
 
-	:global(.quick-picks__label) {
+	.quick-picks__label {
 		margin: 0;
+		color: var(--color-text-muted);
 		font-family: var(--font-family-mono);
+		font-size: var(--font-size-caption);
+		line-height: var(--font-leading-caption);
 		letter-spacing: var(--font-tracking-caps);
 		text-transform: uppercase;
 	}
@@ -768,63 +826,65 @@
 	.quick-picks__list {
 		display: grid;
 		grid-template-columns: repeat(2, minmax(0, 1fr));
-		gap: 0 var(--space-xl);
+		gap: 0 var(--space-5);
 		margin: 0;
 		padding: 0;
 		list-style: none;
-		border-top: var(--border-width) solid var(--color-border);
+		border-top: var(--border-width) solid var(--color-border-subtle);
 	}
 
 	.quick-pick {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		gap: var(--space-sm);
+		gap: var(--space-2);
 		width: 100%;
-		min-height: var(--touch-target);
+		min-height: var(--size-control-lg);
 		padding: 0;
 		border: 0;
-		border-bottom: var(--border-width) solid var(--color-border);
+		border-bottom: var(--border-width) solid var(--color-border-subtle);
 		background: transparent;
 		color: var(--color-text-primary);
 		font-family: var(--font-family-mono);
-		font-size: var(--font-size-body-sm);
+		font-size: var(--font-size-body);
 		text-align: left;
 		cursor: pointer;
 	}
 
-	:global(.quick-pick__icon) {
+	.quick-pick :global(svg) {
+		width: var(--icon-sm);
+		height: var(--icon-sm);
 		color: var(--color-text-muted);
 	}
 
 	@media (hover: hover) and (pointer: fine) {
 		.quick-pick:hover {
-			background: var(--color-surface-subtle);
+			background: var(--color-surface);
 		}
 
-		.quick-pick:hover :global(.quick-pick__icon) {
-			color: var(--color-accent);
+		.quick-pick:hover :global(svg) {
+			color: var(--color-primary);
 		}
 	}
 
 	.quick-pick:focus-visible {
-		outline: var(--border-width-emphasis) solid var(--color-focus);
+		outline: var(--border-width-emphasis) solid var(--color-primary);
 		outline-offset: calc(var(--border-width) * -1);
 	}
 
 	.quick-pick:disabled {
-		color: var(--color-disabled-text);
+		color: var(--color-text-disabled);
 		cursor: not-allowed;
 	}
 
 	.action-row {
 		display: flex;
 		align-items: center;
-		gap: var(--space-lg);
+		gap: var(--space-4);
 		flex-wrap: wrap;
 	}
 
-	@media (max-width: 640px) {
+	@media (max-width: 639px) {
 		.quick-picks__list {
 			grid-template-columns: minmax(0, 1fr);
 		}

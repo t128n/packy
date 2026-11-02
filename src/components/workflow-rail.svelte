@@ -1,6 +1,4 @@
 <script lang="ts">
-	import { Text } from "@t128n/ui";
-
 	type Phase = "idle" | "running" | "done" | "error";
 	type Status = "current" | "done" | "failed" | "pending";
 
@@ -56,21 +54,10 @@
 					{String(index + 1).padStart(2, "0")}
 				</span>
 				<span class="workflow__body">
-					<Text
-						variant="label"
-						as="span"
-						tone={status === "pending" ? "secondary" : "primary"}
-					>
-						{step.label}
-					</Text>
-					<Text
-						variant="caption"
-						tone="secondary"
-						as="span"
-						class="workflow__detail"
-					>
+					<span class="workflow__label">{step.label}</span>
+					<span class="workflow__detail">
 						{detailFor(status, step.detail)}
-					</Text>
+					</span>
 				</span>
 			</li>
 		{/each}
@@ -93,20 +80,18 @@
 	.workflow__step {
 		display: flex;
 		align-items: flex-start;
-		gap: var(--space-md);
+		gap: var(--space-3);
 		min-width: 0;
-		padding: var(--space-md) 0;
-		border-bottom: var(--border-width) solid var(--color-border);
-		color: var(--color-text-secondary);
+		padding: var(--space-3) 0;
+		border-bottom: var(--border-width) solid var(--color-border-subtle);
 	}
 
 	.workflow__step[data-status="current"] {
-		border-bottom: var(--border-width-emphasis) solid var(--color-accent);
-		color: var(--color-text-primary);
+		border-bottom: var(--border-width-emphasis) solid var(--color-primary);
 	}
 
 	.workflow__step[data-status="failed"] {
-		border-bottom: var(--border-width-emphasis) solid var(--color-danger);
+		border-bottom: var(--border-width-emphasis) solid var(--color-error);
 	}
 
 	.workflow__number {
@@ -114,15 +99,15 @@
 		font-family: var(--font-family-mono);
 		font-size: var(--font-size-caption);
 		font-variant-numeric: tabular-nums;
-		line-height: var(--line-height-body);
+		line-height: var(--font-leading-body);
 	}
 
 	.workflow__step[data-status="current"] .workflow__number {
-		color: var(--color-accent);
+		color: var(--color-primary);
 	}
 
 	.workflow__step[data-status="failed"] .workflow__number {
-		color: var(--color-danger);
+		color: var(--color-error);
 	}
 
 	.workflow__body {
@@ -132,18 +117,41 @@
 		min-width: 0;
 	}
 
+	.workflow__label {
+		color: var(--color-text-secondary);
+		font-size: var(--font-size-body);
+		font-weight: var(--font-weight-medium);
+		line-height: var(--font-leading-body);
+	}
+
+	.workflow__step[data-status="current"] .workflow__label,
+	.workflow__step[data-status="done"] .workflow__label,
+	.workflow__step[data-status="failed"] .workflow__label {
+		color: var(--color-text-primary);
+	}
+
+	.workflow__detail {
+		color: var(--color-text-muted);
+		font-size: var(--font-size-caption);
+		line-height: var(--font-leading-caption);
+	}
+
+	.workflow__step[data-status="failed"] .workflow__detail {
+		color: var(--color-error);
+	}
+
 	@media (max-width: 800px) {
 		.workflow__step {
-			gap: var(--space-sm);
-			padding: var(--space-sm) 0;
+			gap: var(--space-2);
+			padding: var(--space-2) 0;
 		}
 
-		:global(.workflow__detail) {
+		.workflow__detail {
 			display: none;
 		}
 	}
 
-	@media (max-width: 640px) {
+	@media (max-width: 639px) {
 		.workflow__step {
 			flex-wrap: wrap;
 		}

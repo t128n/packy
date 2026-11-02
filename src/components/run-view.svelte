@@ -1,18 +1,11 @@
 <script lang="ts">
-	import {
-		Alert,
-		Button,
-		Code,
-		Collapsible,
-		Icon,
-		Inline,
-		Progress,
-		Stack,
-		Text,
-	} from "@t128n/ui";
 	import Checkmark from "~icons/carbon/checkmark";
 	import Close from "~icons/carbon/close";
 
+	import Alert from "~/components/ui/alert.svelte";
+	import Button from "~/components/ui/button.svelte";
+	import Collapsible from "~/components/ui/collapsible.svelte";
+	import Progress from "~/components/ui/progress.svelte";
 	import type { RunStage } from "../lib/core/types";
 	import { describeFailure } from "../lib/ui/failure";
 
@@ -51,13 +44,6 @@
 		failed: "Failed",
 	};
 
-	const statusTones = {
-		waiting: "muted",
-		active: "primary",
-		done: "success",
-		failed: "danger",
-	} as const;
-
 	function stageIndex(id: RunStage): number {
 		return stages.findIndex((candidate) => candidate.id === id);
 	}
@@ -87,98 +73,99 @@
 	}
 </script>
 
-<Stack gap="lg">
+<div class="run-view">
 	<ol class="stage-list" aria-live="polite">
 		{#each stages as item, index (item.id)}
 			{@const status = statusFor(item.id)}
 			<li class="stage" data-status={status}>
 				<span class="stage__marker" aria-hidden="true">
 					{#if status === "done"}
-						<Icon icon={Checkmark} size={16} />
+						<Checkmark />
 					{:else if status === "failed"}
-						<Icon icon={Close} size={16} />
+						<Close />
 					{:else}
 						<span class="stage__number">
 							{String(index + 1).padStart(2, "0")}
 						</span>
 					{/if}
 				</span>
-				<Text
-					variant="body-sm"
-					weight={status === "active" ? "medium" : "regular"}
-				>
-					{item.label}
-				</Text>
-				<Text
-					variant="body-sm"
-					tone={statusTones[status]}
-					class="stage__status"
-				>
-					{statusLabels[status]}
-				</Text>
+				<span class="stage__label">{item.label}</span>
+				<span class="stage__status">{statusLabels[status]}</span>
 			</li>
 		{/each}
 	</ol>
 
 	{#if running}
-		<Progress value={null} label={stage ? operations[stage] : "Starting the build…"} />
+		<Progress
+			value={null}
+			label={stage ? operations[stage] : "Starting the build…"}
+		/>
 	{/if}
 
 	{#if error}
 		<Alert tone="danger" title={`${stageLabel(error.stage)} failed`}>
-			<Stack gap="sm" align="start">
-				<Text variant="body-sm">{guidance?.message}</Text>
+			<div class="stage-error">
+				<p class="stage-error__message">{guidance?.message}</p>
 				{#if error.exitCode !== undefined}
-					<Text variant="body-sm" tone="secondary">
-						Exit code {error.exitCode}
-					</Text>
+					<p class="stage-error__meta">Exit code {error.exitCode}</p>
 				{/if}
-				<Inline gap="sm" wrap>
-					<Button variant={inputError ? "secondary" : "primary"} onclick={onRetry}>
+				<div class="stage-error__actions">
+					<Button
+						variant={inputError ? "secondary" : "primary"}
+						onclick={onRetry}
+					>
 						Retry
 					</Button>
 					{#if onReset}
-						<Button variant={inputError ? "primary" : "link"} onclick={onReset}>
+						<Button
+							variant={inputError ? "primary" : "link"}
+							onclick={onReset}
+						>
 							Edit package or version
 						</Button>
 					{/if}
-				</Inline>
-			</Stack>
+				</div>
+			</div>
 		</Alert>
 	{/if}
 
 	{#if log.trim().length === 0}
-		<Text variant="body-sm" tone="secondary">No output yet.</Text>
+		<p class="run-view__empty">No output yet.</p>
 	{:else}
-		<Collapsible>
-			{#snippet trigger()}Technical details{/snippet}
-			<Code block class="build-log">{log}</Code>
+		<Collapsible title="Technical details">
+			<pre class="code-block"><code>{log}</code></pre>
 		</Collapsible>
 	{/if}
-</Stack>
+</div>
 
 <style>
+	.run-view {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-4);
+	}
+
 	.stage-list {
 		display: flex;
 		flex-direction: column;
 		margin: 0;
 		padding: 0;
 		list-style: none;
-		border-top: var(--border-width) solid var(--color-border);
+		border-top: var(--border-width) solid var(--color-border-subtle);
 	}
 
 	.stage {
 		display: grid;
-		grid-template-columns: var(--icon-size-sm) minmax(0, 1fr) auto;
-		gap: var(--space-md);
+		grid-template-columns: var(--icon-sm) minmax(0, 1fr) auto;
+		gap: var(--space-3);
 		align-items: center;
-		padding: var(--space-sm) 0;
-		border-bottom: var(--border-width) solid var(--color-border);
+		padding: var(--space-2) 0;
+		border-bottom: var(--border-width) solid var(--color-border-subtle);
 	}
 
 	.stage[data-status="active"] {
-		padding-inline: var(--space-sm);
-		background: var(--color-surface-subtle);
+		padding-inline: var(--space-2);
+		background: var(--color-surface);
 	}
 
 	.stage__marker {
@@ -188,8 +175,13 @@
 		color: var(--color-text-muted);
 	}
 
+	.stage__marker :global(svg) {
+		width: var(--icon-sm);
+		height: var(--icon-sm);
+	}
+
 	.stage[data-status="active"] .stage__marker {
-		color: var(--color-accent);
+		color: var(--color-primary);
 	}
 
 	.stage[data-status="done"] .stage__marker {
@@ -197,7 +189,7 @@
 	}
 
 	.stage[data-status="failed"] .stage__marker {
-		color: var(--color-danger);
+		color: var(--color-error);
 	}
 
 	.stage__number {
@@ -206,12 +198,81 @@
 		font-variant-numeric: tabular-nums;
 	}
 
-	:global(.stage__status) {
+	.stage__label {
+		color: var(--color-text-primary);
+		font-size: var(--font-size-body);
+		line-height: var(--font-leading-body);
+	}
+
+	.stage__label,
+	.stage__status {
+		min-width: 0;
+	}
+
+	.stage__status {
+		color: var(--color-text-muted);
+		font-size: var(--font-size-body);
+		line-height: var(--font-leading-body);
 		text-align: right;
 	}
 
-	:global(.build-log) {
-		max-height: var(--layout-log-max);
+	.stage[data-status="active"] .stage__status {
+		color: var(--color-primary);
+	}
+
+	.stage[data-status="done"] .stage__status {
+		color: var(--color-success);
+	}
+
+	.stage[data-status="failed"] .stage__status {
+		color: var(--color-error);
+	}
+
+	.stage-error {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-2);
+	}
+
+	.stage-error__message {
+		margin: 0;
+		color: var(--color-text-primary);
+		font-size: var(--font-size-body);
+		line-height: var(--font-leading-body);
+	}
+
+	.stage-error__meta {
+		margin: 0;
+		color: var(--color-text-secondary);
+		font-size: var(--font-size-body);
+		line-height: var(--font-leading-body);
+	}
+
+	.stage-error__actions {
+		display: flex;
+		gap: var(--space-2);
+		flex-wrap: wrap;
+	}
+
+	.run-view__empty {
+		margin: 0;
+		color: var(--color-text-secondary);
+		font-size: var(--font-size-body);
+		line-height: var(--font-leading-body);
+	}
+
+	.code-block {
+		max-height: var(--layout-code-max);
+		margin: 0;
+		padding: var(--space-3);
 		overflow: auto;
+		border: var(--border-width) solid var(--color-border-subtle);
+		background: var(--color-surface);
+		color: var(--color-text-primary);
+		font-family: var(--font-family-mono);
+		font-size: var(--font-size-mono);
+		line-height: var(--font-leading-mono);
+		white-space: pre-wrap;
+		overflow-wrap: anywhere;
 	}
 </style>

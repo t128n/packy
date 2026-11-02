@@ -1,17 +1,7 @@
-<script lang="ts">
-	import { Text } from "@t128n/ui";
-</script>
+<script lang="ts"></script>
 
 <aside class="brief" aria-labelledby="archive-brief-title">
-	<Text
-		variant="caption"
-		tone="secondary"
-		as="h2"
-		id="archive-brief-title"
-		class="brief__title"
-	>
-		Archive brief
-	</Text>
+	<h2 class="brief__title" id="archive-brief-title">Archive brief</h2>
 
 	<dl class="brief__list">
 		<div class="brief__row">
@@ -32,24 +22,28 @@
 		</div>
 	</dl>
 
-	<Text variant="body-sm" tone="secondary" class="brief__note">
+	<p class="brief__note">
 		Native binaries or external resources may need additional preparation
 		before an offline install.
-	</Text>
+	</p>
 </aside>
 
 <style>
 	.brief {
 		display: flex;
 		flex-direction: column;
-		gap: var(--space-md);
-		padding-left: var(--space-xl);
-		border-left: var(--border-width) solid var(--color-border);
+		gap: var(--space-3);
+		padding-left: var(--space-5);
+		border-left: var(--border-width) solid var(--color-border-subtle);
 	}
 
-	:global(.brief__title) {
+	.brief__title {
 		margin: 0;
+		color: var(--color-text-muted);
 		font-family: var(--font-family-mono);
+		font-size: var(--font-size-caption);
+		font-weight: var(--font-weight-regular);
+		line-height: var(--font-leading-caption);
 		letter-spacing: var(--font-tracking-caps);
 		text-transform: uppercase;
 	}
@@ -63,24 +57,24 @@
 	.brief__row {
 		display: grid;
 		grid-template-columns: minmax(0, 1fr) auto;
-		gap: var(--space-md);
-		padding: var(--space-sm) 0;
-		border-bottom: var(--border-width) solid var(--color-border);
+		gap: var(--space-3);
+		padding: var(--space-2) 0;
+		border-bottom: var(--border-width) solid var(--color-border-subtle);
 	}
 
 	.brief__row:first-child {
-		border-top: var(--border-width) solid var(--color-border);
+		border-top: var(--border-width) solid var(--color-border-subtle);
 	}
 
 	.brief__row dt {
 		color: var(--color-text-secondary);
-		font-size: var(--font-size-body-sm);
+		font-size: var(--font-size-body);
 	}
 
 	.brief__row dd {
 		margin: 0;
 		color: var(--color-text-primary);
-		font-size: var(--font-size-body-sm);
+		font-size: var(--font-size-body);
 		text-align: right;
 	}
 
@@ -88,15 +82,18 @@
 		font-family: var(--font-family-mono);
 	}
 
-	:global(.brief__note) {
+	.brief__note {
 		margin: 0;
+		color: var(--color-text-secondary);
+		font-size: var(--font-size-body);
+		line-height: var(--font-leading-body);
 	}
 
-	@media (max-width: 1024px) {
+	@media (max-width: 1023px) {
 		.brief {
-			padding-top: var(--space-xl);
+			padding-top: var(--space-5);
 			padding-left: 0;
-			border-top: var(--border-width) solid var(--color-border);
+			border-top: var(--border-width) solid var(--color-border-subtle);
 			border-left: 0;
 		}
 	}

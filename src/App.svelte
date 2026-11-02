@@ -1,13 +1,4 @@
 <script lang="ts">
-	import {
-		Alert,
-		AppShell,
-		Container,
-		Page,
-		PageHeader,
-		Section,
-		Text,
-	} from "@t128n/ui";
 	import { onDestroy, onMount, tick } from "svelte";
 
 	import AppFooter from "~/components/app-footer.svelte";
@@ -16,6 +7,10 @@
 	import PackagePicker from "~/components/package-picker.svelte";
 	import ResultView from "~/components/result-view.svelte";
 	import RunView from "~/components/run-view.svelte";
+	import Alert from "~/components/ui/alert.svelte";
+	import PageHeader from "~/components/ui/page-header.svelte";
+	import Section from "~/components/ui/section.svelte";
+	import Text from "~/components/ui/text.svelte";
 	import WorkflowRail from "~/components/workflow-rail.svelte";
 	import { isRunError } from "~/lib/core/errors";
 	import { createLogBuffer } from "~/lib/core/log";
@@ -194,15 +189,15 @@
 	}
 </script>
 
-<div class="app-frame">
-	<AppShell>
-		{#snippet navbar()}
-			<AppNavbar />
-		{/snippet}
+<a class="skip-link" href="#main">Skip to main content</a>
 
-		<Page gap="xl" class="app-page">
+<div class="app-frame">
+	<AppNavbar />
+
+	<main id="main" tabindex="-1" class="app-main">
+		<div class="page">
 			<header class="page-intro">
-				<Text variant="caption" tone="secondary" class="page-intro__eyebrow">
+				<Text variant="caption" tone="muted" class="eyebrow">
 					npm → tarball
 				</Text>
 				<PageHeader
@@ -286,12 +281,8 @@
 					<ArchiveBrief />
 				</div>
 			</div>
-		</Page>
-	</AppShell>
+		</div>
+	</main>
 
-	<div class="app-footer-frame">
-		<Container width="content" padding="none">
-			<AppFooter />
-		</Container>
-	</div>
+	<AppFooter />
 </div>

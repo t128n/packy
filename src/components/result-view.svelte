@@ -1,8 +1,10 @@
 <script lang="ts">
-	import { Alert, Button, Code, Icon, Inline, Stack, Text } from "@t128n/ui";
 	import Checkmark from "~icons/carbon/checkmark";
 	import Copy from "~icons/carbon/copy";
 	import DownloadIcon from "~icons/carbon/download";
+
+	import Alert from "~/components/ui/alert.svelte";
+	import Button from "~/components/ui/button.svelte";
 
 	type Props = {
 		result: {
@@ -57,91 +59,194 @@
 	}
 </script>
 
-<Stack gap="xl">
+<div class="result-view">
 	<div class="receipt">
-		<Text variant="caption" tone="secondary">Archive</Text>
+		<span class="receipt__eyebrow">Archive</span>
 		<p class="receipt__name">{result.filename}</p>
-		<Inline align="center" gap="md" wrap>
-			<Code>{result.name}@{result.version}</Code>
-			<Text variant="body-sm" tone="secondary" numeric>
+		<div class="receipt__meta">
+			<code class="inline-code">{result.name}@{result.version}</code>
+			<span class="receipt__size">
 				{formatBytes(result.bytes.byteLength)} compressed
-			</Text>
-		</Inline>
+			</span>
+		</div>
 	</div>
 
-	<Inline align="center" gap="sm" wrap>
-		<Button
-			variant="primary"
-			disabled={!downloadUrl}
-			onclick={onDownload}
-		>
-			<Icon icon={DownloadIcon} />
+	<div class="result-view__actions">
+		<Button variant="primary" disabled={!downloadUrl} onclick={onDownload}>
+			<DownloadIcon class="button-icon" />
 			Download bundle
 		</Button>
 		<Button variant="secondary" onclick={onReset}>
 			Create another bundle
 		</Button>
-	</Inline>
+	</div>
+
 	{#if downloadError}
-		<Alert tone="danger" title="Download could not start">{downloadError}</Alert>
+		<Alert tone="danger" title="Download could not start">
+			{downloadError}
+		</Alert>
 	{/if}
 
-	<Stack gap="sm">
-		<Text as="h3" variant="subheading">Install locally</Text>
-		<Text variant="body-sm">
-			Place the archive in a <Code>./packages</Code> folder inside your project,
-			then run:
-		</Text>
-		<Code block>{installCommand}</Code>
-		<Inline align="center" gap="sm" wrap>
+	<div class="install">
+		<h3 class="install__title">Install locally</h3>
+		<p class="install__description">
+			Place the archive in a <code class="inline-code">./packages</code>
+			folder inside your project, then run:
+		</p>
+		<pre class="code-block"><code>{installCommand}</code></pre>
+		<div class="install__actions">
 			<Button variant="secondary" onclick={copyCommand}>
-				<Icon icon={Copy} />
+				<Copy class="button-icon" />
 				Copy command
 			</Button>
 			{#if copied}
-				<Inline gap="xs" align="center">
-					<Icon icon={Checkmark} size={16} />
-					<Text
-						as="span"
-						variant="body-sm"
-						tone="success"
-						role="status"
-						aria-live="polite"
-					>
-						Copied
-					</Text>
-				</Inline>
+				<span class="copy-status" role="status" aria-live="polite">
+					<Checkmark class="button-icon" />
+					Copied
+				</span>
 			{/if}
-		</Inline>
+		</div>
 		{#if copyError}
-			<Text variant="body-sm" tone="danger" role="alert">
-				{copyError}
-			</Text>
+			<p class="install__error" role="alert">{copyError}</p>
 		{/if}
-	</Stack>
+	</div>
 
-	<Text variant="body-sm" tone="secondary">
+	<p class="result-view__note">
 		Required dependencies are included. Optional peers and native binaries may
 		need additional preparation before an offline install.
-	</Text>
-</Stack>
+	</p>
+</div>
 
 <style>
+	.result-view {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-5);
+	}
+
 	.receipt {
 		display: flex;
 		flex-direction: column;
-		gap: var(--space-sm);
-		padding-block: var(--space-md);
-		border-top: var(--border-width) solid var(--color-border);
-		border-bottom: var(--border-width) solid var(--color-border);
+		gap: var(--space-2);
+		padding-block: var(--space-3);
+		border-top: var(--border-width) solid var(--color-border-subtle);
+		border-bottom: var(--border-width) solid var(--color-border-subtle);
+	}
+
+	.receipt__eyebrow {
+		color: var(--color-text-muted);
+		font-family: var(--font-family-mono);
+		font-size: var(--font-size-caption);
+		line-height: var(--font-leading-caption);
+		letter-spacing: var(--font-tracking-caps);
+		text-transform: uppercase;
 	}
 
 	.receipt__name {
 		margin: 0;
+		color: var(--color-text-primary);
 		font-family: var(--font-family-mono);
-		font-size: var(--font-size-heading);
+		font-size: var(--font-size-heading-md);
 		font-weight: var(--font-weight-regular);
-		line-height: var(--line-height-heading);
+		line-height: var(--font-leading-heading-md);
 		overflow-wrap: anywhere;
+	}
+
+	.receipt__meta {
+		display: flex;
+		align-items: center;
+		gap: var(--space-3);
+		flex-wrap: wrap;
+	}
+
+	.receipt__size {
+		color: var(--color-text-secondary);
+		font-size: var(--font-size-body);
+		font-variant-numeric: tabular-nums;
+		line-height: var(--font-leading-body);
+	}
+
+	.inline-code {
+		padding: var(--space-1) var(--space-2);
+		border: var(--border-width) solid var(--color-border-subtle);
+		border-radius: var(--radius-sm);
+		background: var(--color-surface);
+		color: var(--color-text-primary);
+		font-family: var(--font-family-mono);
+		font-size: var(--font-size-mono);
+		line-height: var(--font-leading-mono);
+	}
+
+	.result-view__actions,
+	.install__actions {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+		flex-wrap: wrap;
+	}
+
+	.install {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-2);
+	}
+
+	.install__title {
+		margin: 0;
+		color: var(--color-text-primary);
+		font-size: var(--font-size-heading-sm);
+		font-weight: var(--font-weight-semibold);
+		line-height: var(--font-leading-heading-sm);
+	}
+
+	.install__description {
+		max-width: var(--layout-measure);
+		margin: 0;
+		color: var(--color-text-primary);
+		font-size: var(--font-size-body);
+		line-height: var(--font-leading-body);
+	}
+
+	.code-block {
+		margin: 0;
+		padding: var(--space-3);
+		overflow-x: auto;
+		border: var(--border-width) solid var(--color-border-subtle);
+		background: var(--color-surface);
+		color: var(--color-text-primary);
+		font-family: var(--font-family-mono);
+		font-size: var(--font-size-mono);
+		line-height: var(--font-leading-mono);
+		white-space: pre-wrap;
+		overflow-wrap: anywhere;
+	}
+
+	.copy-status {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-1);
+		color: var(--color-success);
+		font-size: var(--font-size-body);
+		line-height: var(--font-leading-body);
+	}
+
+	.install__error {
+		margin: 0;
+		color: var(--color-error);
+		font-size: var(--font-size-body);
+		line-height: var(--font-leading-body);
+	}
+
+	.result-view__note {
+		max-width: var(--layout-measure);
+		margin: 0;
+		color: var(--color-text-secondary);
+		font-size: var(--font-size-body);
+		line-height: var(--font-leading-body);
+	}
+
+	:global(.button-icon) {
+		width: var(--icon-sm);
+		height: var(--icon-sm);
 	}
 </style>

@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { AppMark, Icon, Inline, Link, Text, appRegistry } from "@t128n/ui";
 	import LogoGithub from "~icons/carbon/logo-github";
 	import Moon from "~icons/carbon/moon";
 	import Sun from "~icons/carbon/sun";
 
+	import BrandMark from "~/components/ui/brand-mark.svelte";
 	import { getTheme, toggleTheme, type Theme } from "~/lib/theme";
 
 	let theme = $state<Theme>(getTheme());
@@ -13,44 +13,33 @@
 	}
 </script>
 
-<header class="app-navbar">
-	<div class="app-navbar__inner">
+<header class="app-bar">
+	<div class="app-bar__inner">
 		<a class="brand" href="/" aria-label="packy home">
-			<AppMark app={appRegistry.packy} size="sm" label={null} />
-			<Text variant="label" as="span" weight="medium">packy</Text>
+			<BrandMark size="sm" />
+			<span class="brand__wordmark">packy</span>
 		</a>
 
-		<span class="app-navbar__divider" aria-hidden="true"></span>
-		<Text variant="caption" tone="secondary" class="app-navbar__context">
-			Offline npm bundles
-		</Text>
+		<span class="app-bar__divider" aria-hidden="true"></span>
+		<span class="app-bar__context">Offline npm bundles</span>
 
-		<span class="app-navbar__spacer"></span>
+		<span class="app-bar__spacer"></span>
 
 		<nav aria-label="Main">
-			<Inline gap="sm" align="center">
-				<Link
+			<div class="app-bar__actions">
+				<a
+					class="app-bar__link"
 					href="https://github.com/t128n/packy"
-					variant="ghost"
 					target="_blank"
 					rel="noreferrer"
 					aria-label="GitHub repository"
 				>
-					<Inline gap="xs" align="center">
-						<Icon icon={LogoGithub} size={16} />
-						<Text
-							variant="label"
-							tone="inherit"
-							as="span"
-							class="app-navbar__link-label"
-						>
-							GitHub
-						</Text>
-					</Inline>
-				</Link>
+					<LogoGithub />
+					<span class="app-bar__link-label">GitHub</span>
+				</a>
 
 				<button
-					class="icon-control"
+					class="icon-button"
 					type="button"
 					aria-label={theme === "dark"
 						? "Switch to light theme"
@@ -60,98 +49,154 @@
 						: "Switch to dark theme"}
 					onclick={changeTheme}
 				>
-					<Icon icon={theme === "dark" ? Sun : Moon} size={20} />
+					{#if theme === "dark"}
+						<Sun />
+					{:else}
+						<Moon />
+					{/if}
 				</button>
-			</Inline>
+			</div>
 		</nav>
 	</div>
 </header>
 
 <style>
-	.app-navbar {
-		border-bottom: var(--border-width) solid var(--color-border);
-		background: var(--color-workspace);
-		color: var(--color-text-primary);
+	.app-bar {
+		position: sticky;
+		top: 0;
+		z-index: var(--z-sticky);
+		border-bottom: var(--border-width) solid var(--color-app-bar-divider);
+		background: var(--color-app-bar);
+		color: var(--color-app-bar-text);
 	}
 
-	.app-navbar__inner {
+	.app-bar__inner {
 		display: flex;
 		align-items: center;
-		gap: var(--space-md);
-		min-height: calc(var(--control-height) + var(--space-sm) * 2);
-		padding: 0 var(--space-xl);
+		gap: var(--space-3);
+		width: 100%;
+		max-width: calc(
+			var(--layout-shell) + var(--layout-page-padding) +
+				var(--layout-page-padding)
+		);
+		min-height: var(--layout-app-bar);
+		margin-inline: auto;
+		padding-inline: var(--layout-page-padding);
 	}
 
 	.brand {
 		display: inline-flex;
 		align-items: center;
-		gap: var(--space-sm);
-		color: var(--color-text-primary);
+		gap: var(--space-2);
+		color: var(--color-accent-on-dark);
 		text-decoration: none;
 	}
 
-	.brand:focus-visible {
-		border-radius: var(--radius-sm);
-		outline: var(--border-width-emphasis) solid var(--color-focus);
-		outline-offset: var(--space-xs);
+	.brand__wordmark {
+		color: var(--color-accent-on-dark);
+		font-size: var(--font-size-body);
+		font-weight: var(--font-weight-semibold);
+		line-height: var(--font-leading-none);
+		letter-spacing: var(--font-tracking-heading-md);
 	}
 
-	.app-navbar__divider {
+	.app-bar__divider {
 		width: var(--border-width);
-		height: var(--space-lg);
-		background: var(--color-border);
+		height: var(--space-4);
+		background: var(--color-app-bar-divider);
 	}
 
-	:global(.app-navbar__context) {
+	.app-bar__context {
+		color: var(--color-app-bar-text-secondary);
 		font-family: var(--font-family-mono);
+		font-size: var(--font-size-caption);
+		line-height: var(--font-leading-caption);
 		letter-spacing: var(--font-tracking-caps);
 		text-transform: uppercase;
 	}
 
-	.app-navbar__spacer {
+	.app-bar__spacer {
 		flex: 1;
 	}
 
-	.icon-control {
+	.app-bar__actions {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+	}
+
+	.app-bar__link {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-2);
+		height: var(--size-control-md);
+		padding: 0 var(--space-2);
+		border-radius: var(--radius-md);
+		color: var(--color-app-bar-text-secondary);
+		font-size: var(--font-size-body);
+		font-weight: var(--font-weight-medium);
+		line-height: var(--font-leading-none);
+		text-decoration: none;
+	}
+
+	.app-bar__link :global(svg) {
+		width: var(--icon-sm);
+		height: var(--icon-sm);
+	}
+
+	.app-bar__link:focus-visible {
+		outline: var(--border-width-emphasis) solid var(--color-accent-on-dark);
+		outline-offset: var(--space-1);
+	}
+
+	.icon-button {
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
-		width: var(--touch-target);
-		height: var(--touch-target);
+		width: var(--size-control-md);
+		height: var(--size-control-md);
 		padding: 0;
 		border: 0;
 		border-radius: var(--radius-md);
 		background: transparent;
-		color: var(--color-text-secondary);
+		color: var(--color-app-bar-text-secondary);
 		cursor: pointer;
 	}
 
-	@media (hover: hover) and (pointer: fine) {
-		.icon-control:hover {
-			background: var(--color-surface-subtle);
-			color: var(--color-text-primary);
-		}
+	.icon-button :global(svg) {
+		width: var(--icon-md);
+		height: var(--icon-md);
 	}
 
-	.icon-control:focus-visible {
-		outline: var(--border-width-emphasis) solid var(--color-focus);
-		outline-offset: var(--space-xs);
+	.icon-button:focus-visible {
+		outline: var(--border-width-emphasis) solid var(--color-accent-on-dark);
+		outline-offset: var(--space-1);
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.app-bar__link:hover,
+		.icon-button:hover {
+			background: var(--color-app-bar-raised);
+			color: var(--color-app-bar-text);
+		}
 	}
 
 	@media (max-width: 800px) {
-		.app-navbar__inner {
-			padding: 0 var(--space-lg);
-		}
-
-		.app-navbar__divider,
-		:global(.app-navbar__context) {
+		.app-bar__divider,
+		.app-bar__context {
 			display: none;
 		}
 	}
 
-	@media (max-width: 640px) {
-		:global(.app-navbar__link-label) {
+	@media (max-width: 639px) {
+		.app-bar__link-label {
 			display: none;
+		}
+
+		.app-bar__link {
+			width: var(--size-control-md);
+			justify-content: center;
+			padding: 0;
 		}
 	}
 </style>
