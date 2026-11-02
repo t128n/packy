@@ -196,6 +196,9 @@
 				{disabled}
 				oninput={handleInput}
 				onfocus={handleFocus}
+				onpointerdown={() => {
+					if (!disabled) open = true;
+				}}
 			/>
 			<Combobox.Trigger>
 				{#snippet child({ props })}
