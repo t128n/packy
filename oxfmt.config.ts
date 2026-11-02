@@ -18,6 +18,5 @@ export default defineConfig({
 		"**/*.mdc",
 		"content/**/*.md",
 		"public/coi-serviceworker.js",
-		"SPEC.md",
 	],
 });
