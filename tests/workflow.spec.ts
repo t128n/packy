@@ -1,11 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-const RESOLVED_VERSION = /Currently points to 2\.0\.0/;
 const UNPUBLISHED = /not published/;
-const REQUESTED = /Requested: latest/;
-const REQUESTED_NEXT = /Requested: next/;
-const NEXT_RESOLVED = /Currently points to 3\.0\.0-beta\.1/;
-const REQUESTED_ONE = /Requested: 1\.0\.0/;
 const NEW_RESULT = /new-result/;
 const OLD_RESULT = /old-result/;
 
@@ -56,7 +51,7 @@ test("search, keyboard selection and version validation", async ({ page }) => {
 	await expect(
 		page.getByRole("heading", { name: "@scope/example" }),
 	).toBeVisible();
-	await expect(page.getByText(RESOLVED_VERSION)).toBeVisible();
+	await expect(page.getByTestId("version-summary")).toContainText("2.0.0");
 	await page
 		.getByRole("button", { name: "Use a version range or tag" })
 		.click();
@@ -78,27 +73,43 @@ test("version selector groups dist-tags and versions", async ({ page }) => {
 	await expect(page.getByText("Dist-tags")).toBeVisible();
 	await expect(page.getByText("Versions")).toBeVisible();
 	await page.getByRole("option").filter({ hasText: "next" }).click();
-	await expect(page.getByText(REQUESTED_NEXT)).toBeVisible();
-	await expect(page.getByText(NEXT_RESOLVED)).toBeVisible();
+	await expect(page.getByTestId("version-summary")).toContainText("next");
+	await expect(page.getByTestId("version-summary")).toContainText(
+		"3.0.0-beta.1",
+	);
 	await page.getByRole("button", { name: "Open options" }).click();
 	await page.getByRole("option").filter({ hasText: "1.0.0" }).click();
-	await expect(page.getByText(REQUESTED_ONE)).toBeVisible();
+	await expect(page.getByTestId("version-summary")).toContainText("1.0.0");
 });
 
-test("mobile layout and footer stay focused", async ({ page }) => {
+test("mobile layout stays focused", async ({ page }) => {
 	await page.setViewportSize({ width: 320, height: 720 });
 	await expect(
 		page.getByRole("heading", { name: "Create an offline bundle" }),
 	).toBeVisible();
-	await expect(page.locator("footer")).toContainText("© 2026 Torben Haack");
-	await expect(page.locator("footer")).not.toContainText(
-		"one package per archive",
-	);
+	await expect(
+		page
+			.getByRole("navigation", { name: "Workflow" })
+			.locator('[aria-current="step"]'),
+	).toContainText("Select");
+	await expect(page.getByText("Popular packages")).toBeVisible();
+	await expect(page.getByRole("button", { name: "react" })).toBeVisible();
 	expect(
 		await page.evaluate(
 			() => document.documentElement.scrollWidth <= innerWidth,
 		),
 	).toBe(true);
+});
+
+test("theme toggle persists across reloads", async ({ page }) => {
+	const toggle = page.getByRole("button", { name: "Switch to dark theme" });
+	await toggle.click();
+	await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+	await expect(
+		page.getByRole("button", { name: "Switch to light theme" }),
+	).toBeVisible();
+	await page.reload();
+	await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
 });
 
 test("no search results explains how to continue", async ({ page }) => {
@@ -209,6 +220,11 @@ test("build, download, copy and reset", async ({ page, context }) => {
 	await expect(
 		page.getByRole("heading", { name: "Bundle ready" }),
 	).toBeVisible();
+	await expect(
+		page
+			.getByRole("navigation", { name: "Workflow" })
+			.locator('[aria-current="step"]'),
+	).toContainText("Download");
 	await expect(page.locator(".workflow-focus")).toBeFocused();
 	expect(
 		await page.evaluate(
@@ -268,13 +284,18 @@ test("failed build preserves configuration and supports retry", async ({
 			"This version is not available on npm. Choose another version.",
 		),
 	).toBeVisible();
+	await expect(
+		page
+			.getByRole("navigation", { name: "Workflow" })
+			.locator('[data-status="failed"]'),
+	).toContainText("Build");
 	await expect(page.locator(".workflow-focus")).toBeFocused();
 	await expect(page.getByText("Not run").first()).toBeVisible();
 	await page.getByRole("button", { name: "Edit package or version" }).click();
 	await expect(
 		page.getByRole("heading", { name: "@scope/example" }),
 	).toBeVisible();
-	await expect(page.getByText(REQUESTED)).toBeVisible();
+	await expect(page.getByTestId("version-summary")).toContainText("latest");
 	await page.evaluate(() => {
 		(window as unknown as { __failInstall: boolean }).__failInstall = false;
 	});

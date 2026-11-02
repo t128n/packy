@@ -1,6 +1,10 @@
 <script lang="ts">
-	import { Alert, Button, Code, Icon, Inline, Stack, Text } from "@t128n/ui";
+	import Checkmark from "~icons/carbon/checkmark";
+	import Copy from "~icons/carbon/copy";
 	import DownloadIcon from "~icons/carbon/download";
+
+	import Alert from "~/components/ui/alert.svelte";
+	import Button from "~/components/ui/button.svelte";
 
 	type Props = {
 		result: {
@@ -55,61 +59,176 @@
 	}
 </script>
 
-<Stack gap="lg">
-	<Stack gap="sm">
-		<Inline align="center" gap="sm" wrap>
-			<Code>{result.name}@{result.version}</Code>
-			<Text variant="body-sm" tone="secondary" numeric>
-				{formatBytes(result.bytes.byteLength)} compressed
-			</Text>
-		</Inline>
-		<div class="filename">
-			<Code>{result.filename}</Code>
+<div class="result-view">
+	<div class="artifact">
+		<p class="artifact__name">{result.filename}</p>
+		<p class="artifact__meta">
+			<span class="mono">{result.name}@{result.version}</span>
+			<span class="artifact__sep" aria-hidden="true">·</span>
+			<span>{formatBytes(result.bytes.byteLength)} compressed</span>
+		</p>
+		<div class="artifact__actions">
+			<Button
+				variant="primary"
+				disabled={!downloadUrl}
+				onclick={onDownload}
+			>
+				<DownloadIcon class="button-icon" />
+				Download bundle
+			</Button>
+			<Button variant="ghost" onclick={onReset}>
+				Create another bundle
+			</Button>
 		</div>
-	</Stack>
+	</div>
 
-	<Inline align="center" gap="sm" wrap>
-		<Button
-			variant="primary"
-			disabled={!downloadUrl}
-			onclick={onDownload}
-		>
-			<Icon icon={DownloadIcon} />
-			Download bundle
-		</Button>
-		<Button variant="secondary" onclick={onReset}>
-			Create another bundle
-		</Button>
-	</Inline>
 	{#if downloadError}
-		<Alert tone="danger" title="Download could not start">{downloadError}</Alert>
+		<Alert tone="danger" title="Download could not start">
+			{downloadError}
+		</Alert>
 	{/if}
 
-	<Stack gap="sm">
-		<Text as="h3" variant="subheading">Install locally</Text>
-		<Text variant="body-sm">
-			Place the archive in a <Code>./packages</Code> folder inside your project,
-			then run this command to prevent dependency install scripts from running:
-		</Text>
-		<Code block>{installCommand}</Code>
-		<Inline align="center" gap="sm" wrap>
-			<Button variant="secondary" onclick={copyCommand}>Copy command</Button>
+	<div class="install">
+		<h3 class="install__title">Install locally</h3>
+		<p class="install__description">
+			Place the archive in a <code class="inline-code">./packages</code>
+			folder inside your project, then run:
+		</p>
+		<pre class="code-block"><code>{installCommand}</code></pre>
+		<div class="install__actions">
+			<Button variant="secondary" onclick={copyCommand}>
+				<Copy class="button-icon" />
+				Copy command
+			</Button>
 			{#if copied}
-				<Text as="span" variant="body-sm" tone="success" aria-live="polite">
+				<span class="copy-status" role="status" aria-live="polite">
+					<Checkmark class="button-icon" />
 					Copied
-				</Text>
+				</span>
 			{/if}
-		</Inline>
+		</div>
 		{#if copyError}
-			<Text variant="body-sm" tone="danger" role="alert">
-				{copyError}
-			</Text>
+			<p class="install__error" role="alert">{copyError}</p>
 		{/if}
-	</Stack>
-</Stack>
+	</div>
+</div>
 
 <style>
-	.filename :global(code) {
+	.result-view {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-6);
+	}
+
+	.artifact {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-2);
+	}
+
+	.artifact__name {
+		margin: 0;
+		color: var(--color-text-primary);
+		font-family: var(--font-mono);
+		font-size: var(--font-size-heading-sm);
+		font-weight: var(--font-weight-regular);
+		line-height: var(--font-leading-heading-sm);
 		overflow-wrap: anywhere;
+	}
+
+	.artifact__meta {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+		flex-wrap: wrap;
+		margin: 0;
+		color: var(--color-text-secondary);
+		font-size: var(--font-size-body);
+		font-variant-numeric: tabular-nums;
+		line-height: var(--font-leading-body);
+	}
+
+	.artifact__sep {
+		color: var(--color-text-muted);
+	}
+
+	.artifact__actions,
+	.install__actions {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+		flex-wrap: wrap;
+	}
+
+	.artifact__actions {
+		margin-top: var(--space-2);
+	}
+
+	.inline-code {
+		padding: var(--space-1) var(--space-2);
+		border: var(--border-width) solid var(--color-border-subtle);
+		border-radius: var(--radius-sm);
+		background: var(--color-surface);
+		color: var(--color-text-primary);
+		font-family: var(--font-mono);
+		font-size: var(--font-size-mono);
+		line-height: var(--font-leading-mono);
+	}
+
+	.install {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-2);
+	}
+
+	.install__title {
+		margin: 0;
+		color: var(--color-text-primary);
+		font-size: var(--font-size-heading-sm);
+		font-weight: var(--font-weight-semibold);
+		line-height: var(--font-leading-heading-sm);
+	}
+
+	.install__description {
+		max-width: var(--layout-measure);
+		margin: 0;
+		color: var(--color-text-primary);
+		font-size: var(--font-size-body);
+		line-height: var(--font-leading-body);
+	}
+
+	.code-block {
+		margin: 0;
+		padding: var(--space-3);
+		overflow-x: auto;
+		border: var(--border-width) solid var(--color-border-subtle);
+		background: var(--color-surface);
+		color: var(--color-text-primary);
+		font-family: var(--font-mono);
+		font-size: var(--font-size-mono);
+		line-height: var(--font-leading-mono);
+		white-space: pre-wrap;
+		overflow-wrap: anywhere;
+	}
+
+	.copy-status {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-1);
+		color: var(--color-success);
+		font-size: var(--font-size-body);
+		line-height: var(--font-leading-body);
+	}
+
+	.install__error {
+		margin: 0;
+		color: var(--color-error);
+		font-size: var(--font-size-body);
+		line-height: var(--font-leading-body);
+	}
+
+	:global(.button-icon) {
+		width: var(--icon-sm);
+		height: var(--icon-sm);
 	}
 </style>
