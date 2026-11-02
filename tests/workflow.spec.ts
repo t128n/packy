@@ -87,7 +87,13 @@ test("mobile layout stays focused", async ({ page }) => {
 	await expect(
 		page.getByRole("heading", { name: "Create an offline bundle" }),
 	).toBeVisible();
-	await expect(page.getByText("One package per archive.")).toBeVisible();
+	await expect(
+		page
+			.getByRole("navigation", { name: "Workflow" })
+			.locator('[aria-current="step"]'),
+	).toContainText("Select");
+	await expect(page.getByText("Recommended")).toBeVisible();
+	await expect(page.getByRole("button", { name: "react" })).toBeVisible();
 	expect(
 		await page.evaluate(
 			() => document.documentElement.scrollWidth <= innerWidth,
@@ -214,6 +220,11 @@ test("build, download, copy and reset", async ({ page, context }) => {
 	await expect(
 		page.getByRole("heading", { name: "Bundle ready" }),
 	).toBeVisible();
+	await expect(
+		page
+			.getByRole("navigation", { name: "Workflow" })
+			.locator('[aria-current="step"]'),
+	).toContainText("Download");
 	await expect(page.locator(".workflow-focus")).toBeFocused();
 	expect(
 		await page.evaluate(
@@ -273,6 +284,11 @@ test("failed build preserves configuration and supports retry", async ({
 			"This version is not available on npm. Choose another version.",
 		),
 	).toBeVisible();
+	await expect(
+		page
+			.getByRole("navigation", { name: "Workflow" })
+			.locator('[data-status="failed"]'),
+	).toContainText("Build");
 	await expect(page.locator(".workflow-focus")).toBeFocused();
 	await expect(page.getByText("Not run").first()).toBeVisible();
 	await page.getByRole("button", { name: "Edit package or version" }).click();

@@ -5,6 +5,7 @@
 	import PackagePicker from "~/components/package-picker.svelte";
 	import ResultView from "~/components/result-view.svelte";
 	import RunView from "~/components/run-view.svelte";
+	import WorkflowStepper from "~/components/workflow-stepper.svelte";
 	import Alert from "~/components/ui/alert.svelte";
 	import PageHeader from "~/components/ui/page-header.svelte";
 	import { isRunError } from "~/lib/core/errors";
@@ -210,6 +211,8 @@
 	<main id="main" tabindex="-1" class="app-main">
 		<div class="page">
 			<PageHeader title={pageTitle} />
+
+			<WorkflowStepper {phase} />
 
 			<div class="app-state">
 				{#if !crossOriginIsolated}

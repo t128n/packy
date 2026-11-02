@@ -30,6 +30,14 @@
 		onStart,
 	}: Props = $props();
 
+	const POPULAR_PACKAGES = [
+		"react",
+		"vue",
+		"vite",
+		"typescript",
+		"zod",
+		"lodash",
+	] as const;
 	const MAX_VISIBLE_VERSIONS = 300;
 	const SEARCH_DEBOUNCE_MS = 300;
 	const SEARCH_MIN_LENGTH = 3;
@@ -384,6 +392,16 @@
 		void loadPackage(value);
 	}
 
+	function selectPopular(name: string) {
+		if (disabled) {
+			return;
+		}
+
+		pendingPackage = name;
+		searchTerm = "";
+		void loadPackage(name);
+	}
+
 
 	async function handleVersionSelect(value: string) {
 		if (!value || disabled) {
@@ -700,9 +718,23 @@
 					</Inline>
 				</Stack>
 			{/if}
-			<Text variant="body-sm" tone="secondary">
-				One package per archive.
-			</Text>
+			{#if searchTerm.trim().length === 0}
+				<div class="recommended">
+					<p class="recommended__label">Recommended</p>
+					<div class="recommended__list">
+						{#each POPULAR_PACKAGES as name}
+							<button
+								class="recommended__item"
+								type="button"
+								onclick={() => selectPopular(name)}
+								disabled={disabled}
+							>
+								{name}
+							</button>
+						{/each}
+					</div>
+				</div>
+			{/if}
 		</Stack>
 	{/if}
 </Stack>
@@ -732,6 +764,54 @@
 
 	.version-summary__sep {
 		color: var(--color-text-muted);
+	}
+
+	.recommended {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-2);
+	}
+
+	.recommended__label {
+		margin: 0;
+		color: var(--color-text-secondary);
+		font-size: var(--font-size-body);
+		line-height: var(--font-leading-body);
+	}
+
+	.recommended__list {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--space-3);
+	}
+
+	.recommended__item {
+		padding: 0;
+		border: 0;
+		background: none;
+		color: var(--color-primary);
+		font-family: var(--font-mono);
+		font-size: var(--font-size-body);
+		line-height: var(--font-leading-body);
+		cursor: pointer;
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.recommended__item:hover {
+			color: var(--color-primary-hover);
+			text-decoration: underline;
+			text-underline-offset: var(--space-1);
+		}
+	}
+
+	.recommended__item:focus-visible {
+		outline: var(--border-width-emphasis) solid var(--color-primary);
+		outline-offset: var(--space-1);
+	}
+
+	.recommended__item:disabled {
+		color: var(--color-text-disabled);
+		cursor: not-allowed;
 	}
 
 	.action-row {
