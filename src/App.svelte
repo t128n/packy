@@ -6,14 +6,17 @@
 		Page,
 		PageHeader,
 		Section,
+		Text,
 	} from "@t128n/ui";
 	import { onDestroy, onMount, tick } from "svelte";
 
 	import AppFooter from "~/components/app-footer.svelte";
 	import AppNavbar from "~/components/app-navbar.svelte";
+	import ArchiveBrief from "~/components/archive-brief.svelte";
 	import PackagePicker from "~/components/package-picker.svelte";
 	import ResultView from "~/components/result-view.svelte";
 	import RunView from "~/components/run-view.svelte";
+	import WorkflowRail from "~/components/workflow-rail.svelte";
 	import { isRunError } from "~/lib/core/errors";
 	import { createLogBuffer } from "~/lib/core/log";
 	import { runBundle } from "~/lib/core/run";
@@ -197,71 +200,98 @@
 			<AppNavbar />
 		{/snippet}
 
-		<Page gap="xl" class="task-column">
-			<PageHeader
-				title="Create an offline bundle"
-				description="Choose one npm package to create an archive for offline installation."
-			/>
+		<Page gap="xl" class="app-page">
+			<header class="page-intro">
+				<Text variant="caption" tone="secondary" class="page-intro__eyebrow">
+					npm → tarball
+				</Text>
+				<PageHeader
+					title="Create an offline bundle"
+					description="Turn one npm package into a single tarball, with its required dependencies, for machines without registry access."
+				/>
+			</header>
 
-			{#if !crossOriginIsolated}
-				<Alert
-					tone="warning"
-					title="Cross-origin isolation is not active yet"
-				>
-					packy needs cross-origin isolation to run WebContainers.
-					If this message stays after a reload, serve the site with
-					COOP and COEP headers or check that the service worker is
-					allowed to load.
-				</Alert>
-			{/if}
+			<WorkflowRail {phase} />
 
-			<div hidden={phase !== "idle"} bind:this={pickerRegion}>
-				<Section>
-					{#key pickerKey}
-						<PackagePicker disabled={!crossOriginIsolated} disabledReason="Cross-origin isolation is required to build an archive." onStart={start} />
-					{/key}
-				</Section>
+			<div class="workspace-grid">
+				<div class="task-column">
+					{#if !crossOriginIsolated}
+						<Alert
+							tone="warning"
+							title="Cross-origin isolation is not active yet"
+						>
+							packy needs cross-origin isolation to run WebContainers.
+							If this message stays after a reload, serve the site with
+							COOP and COEP headers or check that the service worker is
+							allowed to load.
+						</Alert>
+					{/if}
+
+					<div hidden={phase !== "idle"} bind:this={pickerRegion}>
+						{#key pickerKey}
+							<PackagePicker
+								disabled={!crossOriginIsolated}
+								disabledReason="Cross-origin isolation is required to build an archive."
+								onStart={start}
+							/>
+						{/key}
+					</div>
+
+					{#if phase === "running" || phase === "error"}
+						<div
+							bind:this={workflowRegion}
+							tabindex="-1"
+							class="workflow-focus"
+						>
+							<Section
+								title={phase === "error"
+									? "Bundle could not be created"
+									: "Creating your bundle"}
+								description={reference
+									? `${phase === "error" ? "Build failed for" : "Building"} ${reference.name}@${reference.versionSpec}.`
+									: phase === "error"
+										? "The build failed."
+										: "Building the archive."}
+							>
+								<RunView
+									{stage}
+									{log}
+									error={failure}
+									running={phase === "running"}
+									onRetry={retry}
+									onReset={editConfiguration}
+								/>
+							</Section>
+						</div>
+					{:else if result !== null}
+						<div
+							bind:this={workflowRegion}
+							tabindex="-1"
+							class="workflow-focus"
+						>
+							<Section title="Bundle ready">
+								<ResultView
+									{result}
+									{downloadUrl}
+									{downloadError}
+									onDownload={download}
+									onReset={reset}
+								/>
+							</Section>
+						</div>
+					{/if}
+				</div>
+
+				<div class="brief-column">
+					<ArchiveBrief />
+				</div>
 			</div>
-			{#if phase === "running" || phase === "error"}
-				<div bind:this={workflowRegion} tabindex="-1" class="workflow-focus">
-				<Section
-					title={phase === "error" ? "Bundle could not be created" : "Creating your bundle"}
-					description={reference
-						? `${phase === "error" ? "Build failed for" : "Building"} ${reference.name}@${reference.versionSpec}.`
-						: phase === "error"
-							? "The build failed."
-							: "Building the archive."}
-				>
-					<RunView
-						{stage}
-						{log}
-						error={failure}
-						running={phase === "running"}
-						onRetry={retry}
-						onReset={editConfiguration}
-					/>
-				</Section>
-				</div>
-			{:else if result !== null}
-				<div bind:this={workflowRegion} tabindex="-1" class="workflow-focus">
-				<Section
-					title="Bundle ready"
-				>
-					<ResultView
-						{result}
-						{downloadUrl}
-						{downloadError}
-						onDownload={download}
-						onReset={reset}
-					/>
-				</Section>
-				</div>
-			{/if}
-
 		</Page>
 	</AppShell>
 
-	<Container width="content" padding="xl">
-		<AppFooter />
-	</Container>
+	<div class="app-footer-frame">
+		<Container width="content" padding="none">
+			<AppFooter />
+		</Container>
+	</div>
 </div>

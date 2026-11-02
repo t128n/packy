@@ -1,5 +1,10 @@
 /* App-level layout only. Everything visual comes from @t128n/ui tokens. */
 
+:root {
+	--font-tracking-caps: 0.04em;
+	--layout-log-max: 20rem;
+}
+
 html,
 body {
 	min-height: 100%;
@@ -7,6 +12,8 @@ body {
 
 body {
 	background: var(--color-workspace);
+	color: var(--color-text-primary);
+	font-family: var(--font-family-sans);
 }
 
 .app-frame {
@@ -15,10 +22,76 @@ body {
 	min-height: 100dvh;
 }
 
-.app-shell {
+.app-frame > .app-shell {
 	flex: 1;
 }
 
-.page.task-column {
-	max-width: 45rem;
+.app-page {
+	width: 100%;
+	padding-block: var(--space-xl) var(--space-2xl);
+}
+
+.page-intro {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-sm);
+}
+
+.page-intro .page-header {
+	margin-bottom: 0;
+}
+
+.page-intro__eyebrow {
+	margin: 0;
+	font-family: var(--font-family-mono);
+	letter-spacing: var(--font-tracking-caps);
+	text-transform: uppercase;
+}
+
+.workspace-grid {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) var(--layout-aside-width);
+	gap: var(--space-3xl);
+	align-items: start;
+}
+
+.task-column {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-xl);
+	min-width: 0;
+}
+
+.brief-column {
+	min-width: 0;
+}
+
+.workflow-focus {
+	scroll-margin-top: var(--space-xl);
+}
+
+.workflow-focus:focus-visible {
+	outline: var(--border-width-emphasis) solid var(--color-focus);
+	outline-offset: var(--space-sm);
+}
+
+.app-footer-frame {
+	padding-inline: var(--space-xl);
+}
+
+@media (max-width: 1024px) {
+	.workspace-grid {
+		grid-template-columns: minmax(0, 1fr);
+		gap: var(--space-2xl);
+	}
+}
+
+@media (max-width: 640px) {
+	.app-page {
+		padding-block: var(--space-lg) var(--space-xl);
+	}
+
+	.app-footer-frame {
+		padding-inline: var(--space-lg);
+	}
 }

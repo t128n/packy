@@ -3,12 +3,14 @@
 		Alert,
 		Button,
 		Combobox,
+		Icon,
 		Inline,
 		Input,
 		Stack,
 		Text,
 	} from "@t128n/ui";
 	import { valid, validRange, maxSatisfying } from "semver";
+	import Add from "~icons/carbon/add";
 
 	import {
 		compareVersionsDesc,
@@ -256,28 +258,6 @@
 	);
 	let selectedSize = $derived(resolvedMeta?.dist?.unpackedSize);
 	let isDeprecated = $derived(Boolean(resolvedMeta?.deprecated));
-
-	let summaryVersionText = $derived.by(() => {
-		if (!effectiveVersionSpec) {
-			return "";
-		}
-
-		const parts = [effectiveVersionSpec];
-
-		if (resolvedVersion && resolvedVersion !== effectiveVersionSpec) {
-			parts.push(`resolves to ${resolvedVersion}`);
-		}
-
-		if (!resolvedVersion) {
-			parts.push("resolved during the build");
-		}
-
-		if (selectedSize !== undefined) {
-			parts.push(`${formatBytes(selectedSize)} unpacked`);
-		}
-
-		return parts.join(" · ");
-	});
 
 	let canStart = $derived(
 		Boolean(packageName) &&
@@ -574,7 +554,7 @@
 	}
 </script>
 
-<Stack gap="lg">
+<Stack gap="xl">
 	{#if packageLoading}
 		<Text variant="body-sm" tone="secondary" aria-live="polite">
 			Loading {pendingPackage} from the npm registry…
@@ -598,25 +578,26 @@
 			</Inline>
 		</Stack>
 	{:else if packument}
-		<Stack gap="lg">
+		<Stack gap="xl">
 			<Inline justify="between" align="start" gap="md" wrap>
 				<Stack gap="xs">
+					<Text variant="caption" tone="secondary">
+						Selected package
+					</Text>
 					<Text variant="subheading" as="h2">{packageName}</Text>
 					{#if packument.description}<Text variant="body-sm" tone="secondary">{packument.description}</Text>{/if}
 				</Stack>
 				<Button variant="secondary" onclick={clearSelection} {disabled}>Change package</Button>
 			</Inline>
+
 			{#if isDeprecated && resolvedMeta?.deprecated}<Alert tone="warning" title="Deprecated version">{resolvedMeta.deprecated}</Alert>{/if}
-			{#if customMode}
-				<Stack gap="sm">
-					<Input class="version-field" label="Version specification" value={customSpec} oninput={(event) => { customSpec = event.currentTarget.value; }} description="Exact version, range, or published tag." placeholder="^18.0.0 or next" error={customSpecError} {disabled} />
-					<Text variant="body-sm" tone="secondary">Requested: {summaryVersionText}</Text>
+
+			<Stack gap="md">
+				{#if customMode}
+					<Input label="Version specification" value={customSpec} oninput={(event) => { customSpec = event.currentTarget.value; }} description="Exact version, range, or published tag." placeholder="^18.0.0 or next" error={customSpecError} {disabled} />
 					<Inline><Button variant="link" onclick={usePublishedVersions} {disabled}>Browse versions</Button></Inline>
-				</Stack>
-			{:else}
-				<Stack gap="sm">
+				{:else}
 					<Combobox
-						class="version-field"
 						label="Version"
 						items={versionOptions}
 						groups={["Dist-tags", "Versions"]}
@@ -629,74 +610,223 @@
 						bind:inputValue={versionFilter}
 						{disabled}
 					/>
-					<Text variant="body-sm" tone="secondary">Requested: {effectiveVersionSpec}{#if resolvedVersion && resolvedVersion !== effectiveVersionSpec} · Currently points to {resolvedVersion}; npm resolves the tag when building.{/if}</Text>
-					{#if capped}<Text variant="body-sm" tone="secondary">Showing the {MAX_VISIBLE_VERSIONS} newest versions. Use a custom specification for older versions.</Text>{/if}
 					<Inline><Button variant="link" onclick={useCustomSpec} {disabled}>Use a version range or tag</Button></Inline>
-				</Stack>
+				{/if}
+
+				<dl class="version-summary" data-testid="version-summary">
+					<div class="version-summary__row">
+						<dt>Requested</dt>
+						<dd class="mono">{effectiveVersionSpec}</dd>
+					</div>
+					<div class="version-summary__row">
+						<dt>Resolves to</dt>
+						<dd class="mono">
+							{resolvedVersion || "At build time"}
+						</dd>
+					</div>
+					{#if selectedSize !== undefined}
+						<div class="version-summary__row">
+							<dt>Unpacked size</dt>
+							<dd>{formatBytes(selectedSize)}</dd>
+						</div>
+					{/if}
+				</dl>
+
+				{#if capped}
+					<Text variant="body-sm" tone="secondary">
+						Showing the {MAX_VISIBLE_VERSIONS} newest versions. Use a
+						custom specification for older versions.
+					</Text>
+				{/if}
+			</Stack>
+
+			<div class="action-row">
+				<Button variant="primary" disabled={!canStart} onclick={start}>
+					Create bundle
+				</Button>
+				<Text variant="body-sm" tone="secondary">
+					Registry access is required to build. One package per archive.
+				</Text>
+			</div>
+			{#if disabled}
+				<Text variant="body-sm" tone="secondary">{disabledReason}</Text>
 			{/if}
 		</Stack>
 	{:else}
-		<Stack gap="md">
-			<Combobox
-				label="Package"
-				placeholder="Search npm packages…"
-				items={searchOptions}
-				bind:inputValue={searchTerm}
-				bind:value={pendingPackage}
-				onValueChange={selectPackageValue}
-				filterMode="manual"
-				loading={searchLoading}
-				emptyLabel={searchEmptyLabel}
-				{disabled}
-			/>
-			{#if searchError}
-				<Stack gap="sm">
-					<Alert tone="danger" title="Could not search npm">
-						{searchError}
-					</Alert>
-					<Inline gap="sm">
-						<Button
-							variant="link"
-							onclick={retrySearch}
-							disabled={disabled}
-						>
-							Retry search
-						</Button>
-					</Inline>
-				</Stack>
-			{/if}
-			{#if searchTerm.trim().length === 0}
-				<Stack gap="sm">
-					<Text variant="label" tone="secondary">
-						Popular packages
-					</Text>
-					<Inline gap="sm" wrap>
-						{#each POPULAR_PACKAGES as name}
+		<Stack gap="xl">
+			<Stack gap="sm">
+				<Text variant="subheading" as="h2">Choose a package</Text>
+				<Text variant="body-sm" tone="secondary">
+					Search the npm registry, or start with a popular package.
+					Required dependencies are bundled automatically.
+				</Text>
+			</Stack>
+
+			<Stack gap="md">
+				<Combobox
+					label="Package"
+					placeholder="Search npm packages…"
+					items={searchOptions}
+					bind:inputValue={searchTerm}
+					bind:value={pendingPackage}
+					onValueChange={selectPackageValue}
+					filterMode="manual"
+					loading={searchLoading}
+					emptyLabel={searchEmptyLabel}
+					{disabled}
+				/>
+				{#if searchError}
+					<Stack gap="sm">
+						<Alert tone="danger" title="Could not search npm">
+							{searchError}
+						</Alert>
+						<Inline gap="sm">
 							<Button
 								variant="link"
-								onclick={() => selectPopular(name)}
+								onclick={retrySearch}
 								disabled={disabled}
 							>
-								{name}
+								Retry search
 							</Button>
-						{/each}
-					</Inline>
-				</Stack>
-			{/if}
+						</Inline>
+					</Stack>
+				{/if}
+				{#if searchTerm.trim().length === 0}
+					<div class="quick-picks">
+						<Text variant="caption" tone="secondary" class="quick-picks__label">
+							Popular
+						</Text>
+						<ul class="quick-picks__list">
+							{#each POPULAR_PACKAGES as name}
+								<li>
+									<button
+										class="quick-pick"
+										type="button"
+										onclick={() => selectPopular(name)}
+										disabled={disabled}
+									>
+										<span class="quick-pick__name">{name}</span>
+										<Icon icon={Add} size={16} class="quick-pick__icon" />
+									</button>
+								</li>
+							{/each}
+						</ul>
+					</div>
+				{/if}
+				<Text variant="body-sm" tone="secondary">
+					One package per archive. Registry access is required to build.
+				</Text>
+			</Stack>
 		</Stack>
-	{/if}
-
-	{#if packument}
-		<Text variant="body-sm" tone="secondary">Registry access is required to build. Packages requiring install scripts may need extra steps offline.</Text>
-		<Inline gap="sm" align="center" wrap>
-			<Button variant="primary" disabled={!canStart} onclick={start}>Create bundle</Button>
-			{#if disabled}<Text variant="body-sm" tone="secondary">{disabledReason}</Text>{/if}
-		</Inline>
 	{/if}
 </Stack>
 
 <style>
-	:global(.version-field) {
-		max-width: 28rem;
+	.version-summary {
+		display: flex;
+		flex-direction: column;
+		margin: 0;
+		border-top: var(--border-width) solid var(--color-border);
+	}
+
+	.version-summary__row {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) auto;
+		gap: var(--space-md);
+		padding: var(--space-sm) 0;
+		border-bottom: var(--border-width) solid var(--color-border);
+	}
+
+	.version-summary__row dt {
+		color: var(--color-text-secondary);
+		font-size: var(--font-size-body-sm);
+	}
+
+	.version-summary__row dd {
+		margin: 0;
+		text-align: right;
+	}
+
+	.mono {
+		font-family: var(--font-family-mono);
+		font-variant-numeric: tabular-nums;
+	}
+
+	.quick-picks {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-sm);
+	}
+
+	:global(.quick-picks__label) {
+		margin: 0;
+		font-family: var(--font-family-mono);
+		letter-spacing: var(--font-tracking-caps);
+		text-transform: uppercase;
+	}
+
+	.quick-picks__list {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 0 var(--space-xl);
+		margin: 0;
+		padding: 0;
+		list-style: none;
+		border-top: var(--border-width) solid var(--color-border);
+	}
+
+	.quick-pick {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--space-sm);
+		width: 100%;
+		min-height: var(--touch-target);
+		padding: 0;
+		border: 0;
+		border-bottom: var(--border-width) solid var(--color-border);
+		background: transparent;
+		color: var(--color-text-primary);
+		font-family: var(--font-family-mono);
+		font-size: var(--font-size-body-sm);
+		text-align: left;
+		cursor: pointer;
+	}
+
+	:global(.quick-pick__icon) {
+		color: var(--color-text-muted);
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.quick-pick:hover {
+			background: var(--color-surface-subtle);
+		}
+
+		.quick-pick:hover :global(.quick-pick__icon) {
+			color: var(--color-accent);
+		}
+	}
+
+	.quick-pick:focus-visible {
+		outline: var(--border-width-emphasis) solid var(--color-focus);
+		outline-offset: calc(var(--border-width) * -1);
+	}
+
+	.quick-pick:disabled {
+		color: var(--color-disabled-text);
+		cursor: not-allowed;
+	}
+
+	.action-row {
+		display: flex;
+		align-items: center;
+		gap: var(--space-lg);
+		flex-wrap: wrap;
+	}
+
+	@media (max-width: 640px) {
+		.quick-picks__list {
+			grid-template-columns: minmax(0, 1fr);
+		}
 	}
 </style>

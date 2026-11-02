@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { Alert, Button, Code, Icon, Inline, Stack, Text } from "@t128n/ui";
+	import Checkmark from "~icons/carbon/checkmark";
+	import Copy from "~icons/carbon/copy";
 	import DownloadIcon from "~icons/carbon/download";
 
 	type Props = {
@@ -55,18 +57,17 @@
 	}
 </script>
 
-<Stack gap="lg">
-	<Stack gap="sm">
-		<Inline align="center" gap="sm" wrap>
+<Stack gap="xl">
+	<div class="receipt">
+		<Text variant="caption" tone="secondary">Archive</Text>
+		<p class="receipt__name">{result.filename}</p>
+		<Inline align="center" gap="md" wrap>
 			<Code>{result.name}@{result.version}</Code>
 			<Text variant="body-sm" tone="secondary" numeric>
 				{formatBytes(result.bytes.byteLength)} compressed
 			</Text>
 		</Inline>
-		<div class="filename">
-			<Code>{result.filename}</Code>
-		</div>
-	</Stack>
+	</div>
 
 	<Inline align="center" gap="sm" wrap>
 		<Button
@@ -89,15 +90,27 @@
 		<Text as="h3" variant="subheading">Install locally</Text>
 		<Text variant="body-sm">
 			Place the archive in a <Code>./packages</Code> folder inside your project,
-			then run this command to prevent dependency install scripts from running:
+			then run:
 		</Text>
 		<Code block>{installCommand}</Code>
 		<Inline align="center" gap="sm" wrap>
-			<Button variant="secondary" onclick={copyCommand}>Copy command</Button>
+			<Button variant="secondary" onclick={copyCommand}>
+				<Icon icon={Copy} />
+				Copy command
+			</Button>
 			{#if copied}
-				<Text as="span" variant="body-sm" tone="success" aria-live="polite">
-					Copied
-				</Text>
+				<Inline gap="xs" align="center">
+					<Icon icon={Checkmark} size={16} />
+					<Text
+						as="span"
+						variant="body-sm"
+						tone="success"
+						role="status"
+						aria-live="polite"
+					>
+						Copied
+					</Text>
+				</Inline>
 			{/if}
 		</Inline>
 		{#if copyError}
@@ -106,10 +119,29 @@
 			</Text>
 		{/if}
 	</Stack>
+
+	<Text variant="body-sm" tone="secondary">
+		Required dependencies are included. Optional peers and native binaries may
+		need additional preparation before an offline install.
+	</Text>
 </Stack>
 
 <style>
-	.filename :global(code) {
+	.receipt {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-sm);
+		padding-block: var(--space-md);
+		border-top: var(--border-width) solid var(--color-border);
+		border-bottom: var(--border-width) solid var(--color-border);
+	}
+
+	.receipt__name {
+		margin: 0;
+		font-family: var(--font-family-mono);
+		font-size: var(--font-size-heading);
+		font-weight: var(--font-weight-regular);
+		line-height: var(--line-height-heading);
 		overflow-wrap: anywhere;
 	}
 </style>

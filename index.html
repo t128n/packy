@@ -2,6 +2,29 @@
 <html lang="en" data-theme="light">
 	<head>
 		<meta charset="UTF-8" />
+		<script>
+			(function () {
+				var key = "packy-theme";
+				var stored = null;
+				try {
+					stored = window.localStorage.getItem(key);
+				} catch {
+					stored = null;
+				}
+				var prefersDark =
+					window.matchMedia &&
+					window.matchMedia("(prefers-color-scheme: dark)").matches;
+				var theme =
+					stored === "light" || stored === "dark"
+						? stored
+						: prefersDark
+							? "dark"
+							: "light";
+				var root = document.documentElement;
+				root.dataset.theme = theme;
+				root.style.colorScheme = theme;
+			})();
+		</script>
 		<script src="/coi-serviceworker.js"></script>
 		<link rel="icon" type="image/svg+xml" href="/favicon.svg" sizes="any" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -10,7 +33,8 @@
 			content="Turn one npm package reference into a single tarball for offline and air-gapped installs."
 		/>
 		<meta name="application-name" content="packy" />
-		<meta name="theme-color" content="#0F62FE" />
+		<meta name="theme-color" content="#FFFFFF" />
+		<meta name="color-scheme" content="light dark" />
 		<meta name="robots" content="index,follow" />
 		<meta property="og:title" content="packy" />
 		<meta

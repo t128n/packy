@@ -1,11 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-const RESOLVED_VERSION = /Currently points to 2\.0\.0/;
 const UNPUBLISHED = /not published/;
-const REQUESTED = /Requested: latest/;
-const REQUESTED_NEXT = /Requested: next/;
-const NEXT_RESOLVED = /Currently points to 3\.0\.0-beta\.1/;
-const REQUESTED_ONE = /Requested: 1\.0\.0/;
 const NEW_RESULT = /new-result/;
 const OLD_RESULT = /old-result/;
 
@@ -56,7 +51,7 @@ test("search, keyboard selection and version validation", async ({ page }) => {
 	await expect(
 		page.getByRole("heading", { name: "@scope/example" }),
 	).toBeVisible();
-	await expect(page.getByText(RESOLVED_VERSION)).toBeVisible();
+	await expect(page.getByTestId("version-summary")).toContainText("2.0.0");
 	await page
 		.getByRole("button", { name: "Use a version range or tag" })
 		.click();
@@ -78,11 +73,13 @@ test("version selector groups dist-tags and versions", async ({ page }) => {
 	await expect(page.getByText("Dist-tags")).toBeVisible();
 	await expect(page.getByText("Versions")).toBeVisible();
 	await page.getByRole("option").filter({ hasText: "next" }).click();
-	await expect(page.getByText(REQUESTED_NEXT)).toBeVisible();
-	await expect(page.getByText(NEXT_RESOLVED)).toBeVisible();
+	await expect(page.getByTestId("version-summary")).toContainText("next");
+	await expect(page.getByTestId("version-summary")).toContainText(
+		"3.0.0-beta.1",
+	);
 	await page.getByRole("button", { name: "Open options" }).click();
 	await page.getByRole("option").filter({ hasText: "1.0.0" }).click();
-	await expect(page.getByText(REQUESTED_ONE)).toBeVisible();
+	await expect(page.getByTestId("version-summary")).toContainText("1.0.0");
 });
 
 test("mobile layout and footer stay focused", async ({ page }) => {
@@ -99,6 +96,17 @@ test("mobile layout and footer stay focused", async ({ page }) => {
 			() => document.documentElement.scrollWidth <= innerWidth,
 		),
 	).toBe(true);
+});
+
+test("theme toggle persists across reloads", async ({ page }) => {
+	const toggle = page.getByRole("button", { name: "Switch to dark theme" });
+	await toggle.click();
+	await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+	await expect(
+		page.getByRole("button", { name: "Switch to light theme" }),
+	).toBeVisible();
+	await page.reload();
+	await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
 });
 
 test("no search results explains how to continue", async ({ page }) => {
@@ -274,7 +282,7 @@ test("failed build preserves configuration and supports retry", async ({
 	await expect(
 		page.getByRole("heading", { name: "@scope/example" }),
 	).toBeVisible();
-	await expect(page.getByText(REQUESTED)).toBeVisible();
+	await expect(page.getByTestId("version-summary")).toContainText("latest");
 	await page.evaluate(() => {
 		(window as unknown as { __failInstall: boolean }).__failInstall = false;
 	});
