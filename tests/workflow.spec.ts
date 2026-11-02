@@ -92,7 +92,7 @@ test("mobile layout stays focused", async ({ page }) => {
 			.getByRole("navigation", { name: "Workflow" })
 			.locator('[aria-current="step"]'),
 	).toContainText("Select");
-	await expect(page.getByText("Recommended")).toBeVisible();
+	await expect(page.getByText("Popular packages")).toBeVisible();
 	await expect(page.getByRole("button", { name: "react" })).toBeVisible();
 	expect(
 		await page.evaluate(

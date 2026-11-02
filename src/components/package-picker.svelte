@@ -572,7 +572,7 @@
 			</Inline>
 		</Stack>
 	{:else if packument}
-		<Stack gap="xl">
+		<Stack gap="2xl">
 			<div class="package-header">
 				<Stack gap="xs">
 					<Text variant="subheading" as="h2">{packageName}</Text>
@@ -593,7 +593,7 @@
 				</Alert>
 			{/if}
 
-			<Stack gap="md">
+			<Stack gap="lg">
 				{#if customMode}
 					<div class="field">
 						<label class="field__label" for="version-spec">
@@ -720,7 +720,7 @@
 			{/if}
 			{#if searchTerm.trim().length === 0}
 				<div class="recommended">
-					<p class="recommended__label">Recommended</p>
+					<p class="recommended__label">Popular packages</p>
 					<div class="recommended__list">
 						{#each POPULAR_PACKAGES as name}
 							<button
@@ -770,6 +770,7 @@
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-2);
+		margin-top: var(--space-4);
 	}
 
 	.recommended__label {

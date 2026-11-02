@@ -209,6 +209,13 @@
 :root {
 	--layout-code-max: 20rem;
 	--layout-menu-max: 20rem;
+	--space-xs: var(--space-1);
+	--space-sm: var(--space-2);
+	--space-md: var(--space-3);
+	--space-lg: var(--space-4);
+	--space-xl: var(--space-5);
+	--space-2xl: var(--space-6);
+	--space-3xl: var(--space-7);
 	--border-width: 1px;
 	--border-width-emphasis: 2px;
 	--font-weight-medium: 500;
