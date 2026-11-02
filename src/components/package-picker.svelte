@@ -572,7 +572,7 @@
 			</Inline>
 		</Stack>
 	{:else if packument}
-		<Stack gap="2xl">
+		<Stack gap="xl">
 			<div class="package-header">
 				<Stack gap="xs">
 					<Text variant="subheading" as="h2">{packageName}</Text>
@@ -593,7 +593,7 @@
 				</Alert>
 			{/if}
 
-			<Stack gap="lg">
+			<Stack gap="md">
 				{#if customMode}
 					<div class="field">
 						<label class="field__label" for="version-spec">
@@ -682,7 +682,7 @@
 			{/if}
 		</Stack>
 	{:else}
-		<Stack gap="md">
+		<Stack gap="lg">
 			<Combobox
 				label="Package"
 				placeholder="Search npm packages…"
@@ -770,7 +770,6 @@
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-2);
-		margin-top: var(--space-4);
 	}
 
 	.recommended__label {
@@ -820,7 +819,6 @@
 		align-items: center;
 		gap: var(--space-4);
 		flex-wrap: wrap;
-		margin-top: var(--space-2);
 	}
 
 </style>
