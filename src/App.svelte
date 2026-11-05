@@ -235,10 +235,12 @@
 	}
 </script>
 
+<a class="visually-hidden-focusable" href="#main">Skip to main content</a>
+
 <div class="d-flex min-vh-100 flex-column">
 	<AppNavbar onShowHelp={showHelp} />
 
-	<main class="flex-grow-1 py-3">
+	<main id="main" tabindex="-1" class="flex-grow-1 py-3">
 		<Container fluid class="px-3 px-lg-4">
 			<div class="visually-hidden" aria-live="polite" aria-atomic="true">
 				{statusMessage}
