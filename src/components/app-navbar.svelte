@@ -1,177 +1,50 @@
 <script lang="ts">
-	import LogoGithub from "~icons/carbon/logo-github";
-	import Moon from "~icons/carbon/moon";
-	import Sun from "~icons/carbon/sun";
+	import {
+		Container,
+		Nav,
+		Navbar,
+		NavbarBrand,
+		NavItem,
+	} from "sveltestrap";
 
-	import BrandMark from "~/components/ui/brand-mark.svelte";
-	import { getTheme, toggleTheme, type Theme } from "~/lib/theme";
+	type Props = {
+		onShowHelp: () => void;
+	};
 
-	let theme = $state<Theme>(getTheme());
+	let { onShowHelp }: Props = $props();
 
-	function changeTheme() {
-		theme = toggleTheme();
+	function openHelp(event: MouseEvent) {
+		event.preventDefault();
+		onShowHelp();
 	}
 </script>
 
-<header class="app-bar">
-	<div class="app-bar__inner">
-		<a class="brand" href="/" aria-label="packy home">
-			<BrandMark size="sm" />
-			<span class="brand__wordmark">packy</span>
-		</a>
-
-		<span class="app-bar__spacer"></span>
+<Navbar expand="md" container={false} class="bg-body-tertiary border-bottom">
+	<Container
+		fluid
+		class="px-3 px-lg-4 d-flex flex-wrap align-items-center justify-content-between gap-2"
+	>
+		<NavbarBrand href="/" class="fw-semibold">packy</NavbarBrand>
 
 		<nav aria-label="Main">
-			<div class="app-bar__actions">
-				<a
-					class="app-bar__link"
-					href="https://github.com/t128n/packy"
-					target="_blank"
-					rel="noreferrer"
-					aria-label="GitHub repository"
-				>
-					<LogoGithub />
-					<span class="app-bar__link-label">GitHub</span>
-				</a>
-
-				<button
-					class="icon-button"
-					type="button"
-					aria-label={theme === "dark"
-						? "Switch to light theme"
-						: "Switch to dark theme"}
-					title={theme === "dark"
-						? "Switch to light theme"
-						: "Switch to dark theme"}
-					onclick={changeTheme}
-				>
-					{#if theme === "dark"}
-						<Sun />
-					{:else}
-						<Moon />
-					{/if}
-				</button>
-			</div>
+			<Nav navbar class="flex-row flex-wrap gap-3">
+				<NavItem>
+					<a class="nav-link" href="#bundle">Bundle</a>
+				</NavItem>
+				<NavItem>
+					<a class="nav-link" href="#how-it-works" onclick={openHelp}>
+						How it works
+					</a>
+				</NavItem>
+				<NavItem>
+					<a
+						class="nav-link"
+						href="https://github.com/t128n/packy"
+						target="_blank"
+						rel="noreferrer">GitHub</a
+					>
+				</NavItem>
+			</Nav>
 		</nav>
-	</div>
-</header>
-
-<style>
-	.app-bar {
-		position: sticky;
-		top: 0;
-		z-index: var(--z-sticky);
-		border-bottom: var(--border-width) solid var(--color-app-bar-divider);
-		background: var(--color-app-bar);
-		color: var(--color-app-bar-text);
-	}
-
-	.app-bar__inner {
-		display: flex;
-		align-items: center;
-		gap: var(--space-3);
-		width: 100%;
-		max-width: calc(
-			var(--layout-settings-max) + var(--layout-page-padding) +
-				var(--layout-page-padding)
-		);
-		min-height: var(--layout-app-bar);
-		margin-inline: auto;
-		padding-inline: var(--layout-page-padding);
-	}
-
-	.brand {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-2);
-		color: var(--color-accent-on-dark);
-		text-decoration: none;
-	}
-
-	.brand__wordmark {
-		color: var(--color-accent-on-dark);
-		font-size: var(--font-size-body);
-		font-weight: var(--font-weight-semibold);
-		line-height: var(--font-leading-none);
-		letter-spacing: var(--font-tracking-heading-md);
-	}
-
-	.app-bar__spacer {
-		flex: 1;
-	}
-
-	.app-bar__actions {
-		display: flex;
-		align-items: center;
-		gap: var(--space-2);
-	}
-
-	.app-bar__link {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-2);
-		height: var(--size-control-md);
-		padding: 0 var(--space-2);
-		border-radius: var(--radius-md);
-		color: var(--color-app-bar-text-secondary);
-		font-size: var(--font-size-body);
-		font-weight: var(--font-weight-medium);
-		line-height: var(--font-leading-none);
-		text-decoration: none;
-	}
-
-	.app-bar__link :global(svg) {
-		width: var(--icon-sm);
-		height: var(--icon-sm);
-	}
-
-	.app-bar__link:focus-visible {
-		outline: var(--border-width-emphasis) solid var(--color-accent-on-dark);
-		outline-offset: var(--space-1);
-	}
-
-	.icon-button {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		width: var(--size-control-md);
-		height: var(--size-control-md);
-		padding: 0;
-		border: 0;
-		border-radius: var(--radius-md);
-		background: transparent;
-		color: var(--color-app-bar-text-secondary);
-		cursor: pointer;
-	}
-
-	.icon-button :global(svg) {
-		width: var(--icon-md);
-		height: var(--icon-md);
-	}
-
-	.icon-button:focus-visible {
-		outline: var(--border-width-emphasis) solid var(--color-accent-on-dark);
-		outline-offset: var(--space-1);
-	}
-
-	@media (hover: hover) and (pointer: fine) {
-		.app-bar__link:hover,
-		.icon-button:hover {
-			background: var(--color-app-bar-raised);
-			color: var(--color-app-bar-text);
-		}
-	}
-
-	@media (max-width: 639px) {
-		.app-bar__link-label {
-			display: none;
-		}
-
-		.app-bar__link {
-			width: var(--size-control-md);
-			justify-content: center;
-			padding: 0;
-		}
-	}
-</style>
+	</Container>
+</Navbar>

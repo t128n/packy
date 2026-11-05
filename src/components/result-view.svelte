@@ -1,10 +1,5 @@
 <script lang="ts">
-	import Checkmark from "~icons/carbon/checkmark";
-	import Copy from "~icons/carbon/copy";
-	import DownloadIcon from "~icons/carbon/download";
-
-	import Alert from "~/components/ui/alert.svelte";
-	import Button from "~/components/ui/button.svelte";
+	import { Button } from "sveltestrap";
 
 	type Props = {
 		result: {
@@ -19,7 +14,13 @@
 		onReset: () => void;
 	};
 
-	let { result, downloadUrl, downloadError = "", onDownload, onReset }: Props = $props();
+	let {
+		result,
+		downloadUrl,
+		downloadError = "",
+		onDownload,
+		onReset,
+	}: Props = $props();
 
 	let copied = $state(false);
 	let copyError = $state<string | null>(null);
@@ -59,176 +60,61 @@
 	}
 </script>
 
-<div class="result-view">
-	<div class="artifact">
-		<p class="artifact__name">{result.filename}</p>
-		<p class="artifact__meta">
-			<span class="mono">{result.name}@{result.version}</span>
-			<span class="artifact__sep" aria-hidden="true">·</span>
-			<span>{formatBytes(result.bytes.byteLength)} compressed</span>
-		</p>
-		<div class="artifact__actions">
-			<Button
-				variant="primary"
-				disabled={!downloadUrl}
-				onclick={onDownload}
-			>
-				<DownloadIcon class="button-icon" />
-				Download bundle
-			</Button>
-			<Button variant="ghost" onclick={onReset}>
-				Create another bundle
-			</Button>
-		</div>
-	</div>
-
-	{#if downloadError}
-		<Alert tone="danger" title="Download could not start">
-			{downloadError}
-		</Alert>
-	{/if}
-
-	<div class="install">
-		<h3 class="install__title">Install locally</h3>
-		<p class="install__description">
-			Place the archive in a <code class="inline-code">./packages</code>
-			folder inside your project, then run:
-		</p>
-		<pre class="code-block"><code>{installCommand}</code></pre>
-		<div class="install__actions">
-			<Button variant="secondary" onclick={copyCommand}>
-				<Copy class="button-icon" />
-				Copy command
-			</Button>
-			{#if copied}
-				<span class="copy-status" role="status" aria-live="polite">
-					<Checkmark class="button-icon" />
-					Copied
-				</span>
-			{/if}
-		</div>
-		{#if copyError}
-			<p class="install__error" role="alert">{copyError}</p>
-		{/if}
-	</div>
+<div class="table-responsive">
+	<table class="table table-sm app-meta-table mb-3 w-auto">
+		<tbody>
+			<tr>
+				<th scope="row">Package</th>
+				<td><code>{result.name}@{result.version}</code></td>
+			</tr>
+			<tr>
+				<th scope="row">Archive</th>
+				<td><code class="text-break">{result.filename}</code></td>
+			</tr>
+			<tr>
+				<th scope="row">Size</th>
+				<td>{formatBytes(result.bytes.byteLength)} compressed</td>
+			</tr>
+		</tbody>
+	</table>
 </div>
 
-<style>
-	.result-view {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-6);
-	}
+<div class="d-flex flex-wrap gap-2 mb-3">
+	<Button color="primary" disabled={!downloadUrl} on:click={onDownload}>
+		Download bundle
+	</Button>
+	<Button color="outline-secondary" on:click={onReset}>
+		Create another bundle
+	</Button>
+</div>
 
-	.artifact {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-2);
-	}
+{#if downloadError}
+	<div class="alert alert-danger" role="alert">
+		<h3 class="alert-heading h6">Download could not start</h3>
+		<p class="mb-0">{downloadError}</p>
+	</div>
+{/if}
 
-	.artifact__name {
-		margin: 0;
-		color: var(--color-text-primary);
-		font-family: var(--font-mono);
-		font-size: var(--font-size-heading-sm);
-		font-weight: var(--font-weight-regular);
-		line-height: var(--font-leading-heading-sm);
-		overflow-wrap: anywhere;
-	}
+<h3 class="h5 mt-4">Install</h3>
+<p class="small text-body-secondary mb-2">
+	Place the archive in <code>./packages</code>, then run:
+</p>
+<div class="d-flex flex-wrap align-items-start gap-2 mb-2">
+	<pre class="app-log app-install-command"><code>{installCommand}</code></pre>
+	<Button color="outline-secondary" size="sm" on:click={copyCommand}>
+		Copy command
+	</Button>
+</div>
 
-	.artifact__meta {
-		display: flex;
-		align-items: center;
-		gap: var(--space-2);
-		flex-wrap: wrap;
-		margin: 0;
-		color: var(--color-text-secondary);
-		font-size: var(--font-size-body);
-		font-variant-numeric: tabular-nums;
-		line-height: var(--font-leading-body);
-	}
+{#if copied}
+	<span class="small text-success" aria-live="polite">Copied</span>
+{/if}
 
-	.artifact__sep {
-		color: var(--color-text-muted);
-	}
+{#if copyError}
+	<p class="small text-danger mt-2 mb-0" role="alert">{copyError}</p>
+{/if}
 
-	.artifact__actions,
-	.install__actions {
-		display: flex;
-		align-items: center;
-		gap: var(--space-2);
-		flex-wrap: wrap;
-	}
-
-	.artifact__actions {
-		margin-top: var(--space-2);
-	}
-
-	.inline-code {
-		padding: var(--space-1) var(--space-2);
-		border: var(--border-width) solid var(--color-border-subtle);
-		border-radius: var(--radius-sm);
-		background: var(--color-surface);
-		color: var(--color-text-primary);
-		font-family: var(--font-mono);
-		font-size: var(--font-size-mono);
-		line-height: var(--font-leading-mono);
-	}
-
-	.install {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-2);
-	}
-
-	.install__title {
-		margin: 0;
-		color: var(--color-text-primary);
-		font-size: var(--font-size-heading-sm);
-		font-weight: var(--font-weight-semibold);
-		line-height: var(--font-leading-heading-sm);
-	}
-
-	.install__description {
-		max-width: var(--layout-measure);
-		margin: 0;
-		color: var(--color-text-primary);
-		font-size: var(--font-size-body);
-		line-height: var(--font-leading-body);
-	}
-
-	.code-block {
-		margin: 0;
-		padding: var(--space-3);
-		overflow-x: auto;
-		border: var(--border-width) solid var(--color-border-subtle);
-		background: var(--color-surface);
-		color: var(--color-text-primary);
-		font-family: var(--font-mono);
-		font-size: var(--font-size-mono);
-		line-height: var(--font-leading-mono);
-		white-space: pre-wrap;
-		overflow-wrap: anywhere;
-	}
-
-	.copy-status {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-1);
-		color: var(--color-success);
-		font-size: var(--font-size-body);
-		line-height: var(--font-leading-body);
-	}
-
-	.install__error {
-		margin: 0;
-		color: var(--color-error);
-		font-size: var(--font-size-body);
-		line-height: var(--font-leading-body);
-	}
-
-	:global(.button-icon) {
-		width: var(--icon-sm);
-		height: var(--icon-sm);
-	}
-</style>
+<p class="form-text mb-0">
+	Install scripts are disabled. Packages that require them may need extra
+	preparation.
+</p>

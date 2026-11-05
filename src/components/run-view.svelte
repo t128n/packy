@@ -1,11 +1,6 @@
 <script lang="ts">
-	import Checkmark from "~icons/carbon/checkmark";
-	import Close from "~icons/carbon/close";
+	import { Button, Spinner } from "sveltestrap";
 
-	import Alert from "~/components/ui/alert.svelte";
-	import Button from "~/components/ui/button.svelte";
-	import Collapsible from "~/components/ui/collapsible.svelte";
-	import Progress from "~/components/ui/progress.svelte";
 	import type { RunStage } from "../lib/core/types";
 	import { describeFailure } from "../lib/ui/failure";
 
@@ -25,7 +20,14 @@
 	let { stage, log, error, running, onRetry, onReset }: Props = $props();
 	let guidance = $derived(error ? describeFailure(error, log) : null);
 	let inputError = $derived(guidance?.action === "edit");
-	const operations: Record<RunStage, string> = { prepare: "Preparing a workspace…", install: "Downloading the package and its dependencies…", patch: "Preparing the package for offline installation…", pack: "Creating the archive…", capture: "Reading the completed archive…" };
+
+	const operations: Record<RunStage, string> = {
+		prepare: "Preparing workspace…",
+		install: "Downloading dependencies…",
+		patch: "Preparing manifest…",
+		pack: "Creating archive…",
+		capture: "Reading archive…",
+	};
 
 	type StageStatus = "waiting" | "active" | "done" | "failed";
 
@@ -38,10 +40,17 @@
 	];
 
 	const statusLabels: Record<StageStatus, string> = {
-		waiting: "Not run",
-		active: "In progress",
-		done: "Done",
+		waiting: "Pending",
+		active: "Running",
+		done: "Complete",
 		failed: "Failed",
+	};
+
+	const statusClasses: Record<StageStatus, string> = {
+		waiting: "text-body-secondary",
+		active: "text-primary",
+		done: "text-success",
+		failed: "text-danger",
 	};
 
 	function stageIndex(id: RunStage): number {
@@ -73,206 +82,71 @@
 	}
 </script>
 
-<div class="run-view">
-	<ol class="stage-list" aria-live="polite">
-		{#each stages as item, index (item.id)}
-			{@const status = statusFor(item.id)}
-			<li class="stage" data-status={status}>
-				<span class="stage__marker" aria-hidden="true">
-					{#if status === "done"}
-						<Checkmark />
-					{:else if status === "failed"}
-						<Close />
-					{:else}
-						<span class="stage__number">
-							{String(index + 1).padStart(2, "0")}
-						</span>
-					{/if}
-				</span>
-				<span class="stage__label">{item.label}</span>
-				<span class="stage__status">{statusLabels[status]}</span>
-			</li>
-		{/each}
-	</ol>
-
-	{#if running}
-		<Progress
-			value={null}
-			label={stage ? operations[stage] : "Starting the build…"}
-		/>
-	{/if}
-
-	{#if error}
-		<Alert tone="danger" title={`${stageLabel(error.stage)} failed`}>
-			<div class="stage-error">
-				<p class="stage-error__message">{guidance?.message}</p>
-				{#if error.exitCode !== undefined}
-					<p class="stage-error__meta">Exit code {error.exitCode}</p>
-				{/if}
-				<div class="stage-error__actions">
-					<Button
-						variant={inputError ? "secondary" : "primary"}
-						onclick={onRetry}
-					>
-						Retry
-					</Button>
-					{#if onReset}
-						<Button
-							variant={inputError ? "primary" : "link"}
-							onclick={onReset}
-						>
-							Edit package or version
-						</Button>
-					{/if}
-				</div>
-			</div>
-		</Alert>
-	{/if}
-
-	{#if log.trim().length === 0}
-		<p class="run-view__empty">No output yet.</p>
-	{:else}
-		<Collapsible title="Build log">
-			<pre class="code-block"><code>{log}</code></pre>
-		</Collapsible>
-	{/if}
+<div class="table-responsive">
+	<table class="table table-sm align-middle mb-3">
+		<thead>
+			<tr>
+				<th scope="col">Step</th>
+				<th scope="col">Status</th>
+				<th scope="col">Details</th>
+			</tr>
+		</thead>
+		<tbody aria-live="polite">
+			{#each stages as item (item.id)}
+				{@const status = statusFor(item.id)}
+				<tr>
+					<td>{item.label}</td>
+					<td>
+						{#if status === "active"}
+							<span
+								class="d-inline-flex align-items-center gap-2 text-primary"
+							>
+								<Spinner size="sm" />
+								{statusLabels[status]}
+							</span>
+						{:else}
+							<span class={statusClasses[status]}>
+								{statusLabels[status]}
+							</span>
+						{/if}
+					</td>
+					<td class="small text-body-secondary">
+						{#if status === "active" && stage}
+							{operations[stage]}
+						{/if}
+					</td>
+				</tr>
+			{/each}
+		</tbody>
+	</table>
 </div>
 
-<style>
-	.run-view {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-4);
-	}
+{#if error}
+	<div class="alert alert-danger" role="alert">
+		<h3 class="alert-heading h6">{stageLabel(error.stage)} failed</h3>
+		<p>{guidance?.message}</p>
+		{#if error.exitCode !== undefined}
+			<p class="small text-body-secondary mb-2">Exit code {error.exitCode}</p>
+		{/if}
+		<div class="d-flex flex-wrap gap-2">
+			<Button
+				color={inputError ? "outline-secondary" : "primary"}
+				on:click={onRetry}>Retry</Button
+			>
+			{#if onReset}
+				<Button
+					color={inputError ? "primary" : "link"}
+					class={inputError ? "" : "p-0"}
+					on:click={onReset}>Edit package or version</Button
+				>
+			{/if}
+		</div>
+	</div>
+{/if}
 
-	.stage-list {
-		display: flex;
-		flex-direction: column;
-		margin: 0;
-		padding: 0;
-		list-style: none;
-		border-top: var(--border-width) solid var(--color-border-subtle);
-	}
-
-	.stage {
-		display: grid;
-		grid-template-columns: var(--icon-sm) minmax(0, 1fr) auto;
-		gap: var(--space-3);
-		align-items: center;
-		padding: var(--space-2) 0;
-		border-bottom: var(--border-width) solid var(--color-border-subtle);
-	}
-
-	.stage[data-status="active"] {
-		padding-inline: var(--space-2);
-		background: var(--color-surface);
-	}
-
-	.stage__marker {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		color: var(--color-text-muted);
-	}
-
-	.stage__marker :global(svg) {
-		width: var(--icon-sm);
-		height: var(--icon-sm);
-	}
-
-	.stage[data-status="active"] .stage__marker {
-		color: var(--color-primary);
-	}
-
-	.stage[data-status="done"] .stage__marker {
-		color: var(--color-success);
-	}
-
-	.stage[data-status="failed"] .stage__marker {
-		color: var(--color-error);
-	}
-
-	.stage__number {
-		font-family: var(--font-mono);
-		font-size: var(--font-size-caption);
-		font-variant-numeric: tabular-nums;
-	}
-
-	.stage__label {
-		color: var(--color-text-primary);
-		font-size: var(--font-size-body);
-		line-height: var(--font-leading-body);
-	}
-
-	.stage__label,
-	.stage__status {
-		min-width: 0;
-	}
-
-	.stage__status {
-		color: var(--color-text-muted);
-		font-size: var(--font-size-body);
-		line-height: var(--font-leading-body);
-		text-align: right;
-	}
-
-	.stage[data-status="active"] .stage__status {
-		color: var(--color-primary);
-	}
-
-	.stage[data-status="done"] .stage__status {
-		color: var(--color-success);
-	}
-
-	.stage[data-status="failed"] .stage__status {
-		color: var(--color-error);
-	}
-
-	.stage-error {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-2);
-	}
-
-	.stage-error__message {
-		margin: 0;
-		color: var(--color-text-primary);
-		font-size: var(--font-size-body);
-		line-height: var(--font-leading-body);
-	}
-
-	.stage-error__meta {
-		margin: 0;
-		color: var(--color-text-secondary);
-		font-size: var(--font-size-body);
-		line-height: var(--font-leading-body);
-	}
-
-	.stage-error__actions {
-		display: flex;
-		gap: var(--space-2);
-		flex-wrap: wrap;
-	}
-
-	.run-view__empty {
-		margin: 0;
-		color: var(--color-text-secondary);
-		font-size: var(--font-size-body);
-		line-height: var(--font-leading-body);
-	}
-
-	.code-block {
-		max-height: var(--layout-code-max);
-		margin: 0;
-		padding: var(--space-3);
-		overflow: auto;
-		border: var(--border-width) solid var(--color-border-subtle);
-		background: var(--color-surface);
-		color: var(--color-text-primary);
-		font-family: var(--font-mono);
-		font-size: var(--font-size-mono);
-		line-height: var(--font-leading-mono);
-		white-space: pre-wrap;
-		overflow-wrap: anywhere;
-	}
-</style>
+{#if log.trim().length > 0}
+	<details>
+		<summary class="small text-body-secondary">Technical details</summary>
+		<pre class="app-log mt-2"><code>{log}</code></pre>
+	</details>
+{/if}

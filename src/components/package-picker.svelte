@@ -1,12 +1,7 @@
 <script lang="ts">
+	import { Button, Input, Spinner } from "sveltestrap";
 	import { valid, validRange, maxSatisfying } from "semver";
-
-	import Alert from "~/components/ui/alert.svelte";
-	import Button from "~/components/ui/button.svelte";
-	import Combobox from "~/components/ui/combobox.svelte";
-	import Inline from "~/components/ui/inline.svelte";
-	import Stack from "~/components/ui/stack.svelte";
-	import Text from "~/components/ui/text.svelte";
+	import { tick } from "svelte";
 
 	import {
 		compareVersionsDesc,
@@ -22,12 +17,14 @@
 		disabled?: boolean;
 		disabledReason?: string;
 		onStart: (reference: { name: string; versionSpec: string }) => void;
+		onSelect?: () => void;
 	};
 
 	let {
 		disabled = false,
 		disabledReason = "Wait for the current run to finish.",
 		onStart,
+		onSelect,
 	}: Props = $props();
 
 	const POPULAR_PACKAGES = [
@@ -44,6 +41,7 @@
 	const FORBIDDEN_SPEC =
 		/^(?:file:|link:|workspace:|git\+|https?:|npm:)|[/\\]|^\./i;
 	const NEWLINE = /[\r\n]/;
+	const WHITESPACE = /\s/;
 
 	let searchTerm = $state("");
 	let searchResults = $state<RegistrySearchResult[]>([]);
@@ -63,6 +61,11 @@
 
 	let searchRequestId = 0;
 	let loadRequestId = 0;
+
+	let searchField = $state<HTMLInputElement>();
+	let versionField = $state<HTMLSelectElement>();
+	let customField = $state<HTMLInputElement>();
+	let resultsList = $state<HTMLElement>();
 
 	const packumentCache = new Map<string, RegistryPackument>();
 
@@ -103,11 +106,10 @@
 		},
 	);
 
-	let versionCount = $derived(sortedVersions.length);
 	let latestVersion = $derived(
 		packument?.["dist-tags"].latest ?? sortedVersions[0]?.[0] ?? "",
 	);
-	let capped = $derived(versionCount > MAX_VISIBLE_VERSIONS);
+	let capped = $derived(sortedVersions.length > MAX_VISIBLE_VERSIONS);
 
 	let tagOptions = $derived.by(() => {
 		const currentPackument = packument;
@@ -118,8 +120,7 @@
 
 		return Object.entries(currentPackument["dist-tags"])
 			.filter(
-				([tag]) =>
-					!Object.hasOwn(currentPackument.versions, tag),
+				([tag]) => !Object.hasOwn(currentPackument.versions, tag),
 			)
 			.toSorted(([left], [right]) => {
 				if (left === "latest") {
@@ -132,36 +133,8 @@
 
 				return left.localeCompare(right);
 			})
-			.map(([tag, version]) => ({
-				value: tag,
-				label: tag,
-				description: `→ ${version}`,
-				group: "Dist-tags",
-			}));
+			.map(([tag, version]) => ({ value: tag, label: tag, version }));
 	});
-
-	let versionOptions = $derived.by(() => {
-		const versions = sortedVersions
-			.slice(0, MAX_VISIBLE_VERSIONS)
-			.map(([version, meta]) => ({
-				value: version,
-				label: version,
-				description: describeVersion(version, meta),
-				group: "Versions",
-			}));
-
-		return [...tagOptions, ...versions];
-	});
-
-	let searchOptions = $derived(
-		searchResults.map((result) => ({
-			value: result.name,
-			label: result.name,
-			description: result.description
-				? truncate(result.description, 120)
-				: undefined,
-		})),
-	);
 
 	let searchEmptyMessage = $derived.by(() => {
 		if (
@@ -185,13 +158,6 @@
 
 		return `No packages found for "${term}". Check the spelling and try again.`;
 	});
-
-	let searchEmptyLabel = $derived(
-		searchError
-			? "Search failed. Try again."
-			: searchEmptyMessage || "Type to search npm packages.",
-	);
-
 
 	let effectiveVersionSpec = $derived(
 		customMode ? customSpec.trim() : versionSpec,
@@ -353,6 +319,7 @@
 		searchError = "";
 		searchLoading = false;
 		searchResults = [];
+		searchRequestId += 1;
 
 		try {
 			const data = await loadPackument(trimmed);
@@ -367,6 +334,10 @@
 			customMode = false;
 			customSpec = "";
 			searchTerm = "";
+			packageLoading = false;
+			onSelect?.();
+			await tick();
+			versionField?.focus();
 		} catch (error) {
 			if (requestId !== loadRequestId) {
 				return;
@@ -387,7 +358,6 @@
 			return;
 		}
 
-		pendingPackage = value;
 		searchTerm = "";
 		void loadPackage(value);
 	}
@@ -397,29 +367,98 @@
 			return;
 		}
 
-		pendingPackage = name;
 		searchTerm = "";
 		void loadPackage(name);
 	}
 
+	function handleSearchInput(event: Event) {
+		searchTerm = (event.currentTarget as HTMLInputElement).value;
+	}
 
-	async function handleVersionSelect(value: string) {
-		if (!value || disabled) {
+	function handleVersionChange(event: Event) {
+		const value = (event.currentTarget as HTMLSelectElement).value;
+
+		if (value) {
+			versionSpec = value;
+		}
+	}
+
+	function handleCustomSpecInput(event: Event) {
+		customSpec = (event.currentTarget as HTMLInputElement).value;
+	}
+
+	function handleSearchKeydown(event: KeyboardEvent) {
+		if (event.key === "ArrowDown" && searchResults.length > 0) {
+			event.preventDefault();
+			resultsList
+				?.querySelector<HTMLButtonElement>("button[data-result]")
+				?.focus();
 			return;
 		}
 
-		versionSpec = value;
+		if (event.key === "Enter") {
+			event.preventDefault();
+
+			const term = searchTerm.trim();
+
+			if (searchResults.length > 0) {
+				selectPackageValue(searchResults[0]?.name ?? "");
+			} else if (term && !WHITESPACE.test(term)) {
+				void loadPackage(term);
+			}
+			return;
+		}
+
+		if (event.key === "Escape") {
+			searchTerm = "";
+			searchResults = [];
+		}
 	}
 
-	function useCustomSpec() {
+	function handleResultKeydown(event: KeyboardEvent, index: number) {
+		const buttons =
+			resultsList?.querySelectorAll<HTMLButtonElement>("button[data-result]");
+
+		if (!buttons || buttons.length === 0) {
+			return;
+		}
+
+		if (event.key === "ArrowDown") {
+			event.preventDefault();
+			buttons[Math.min(index + 1, buttons.length - 1)]?.focus();
+			return;
+		}
+
+		if (event.key === "ArrowUp") {
+			event.preventDefault();
+
+			if (index === 0) {
+				searchField?.focus();
+			} else {
+				buttons[index - 1]?.focus();
+			}
+			return;
+		}
+
+		if (event.key === "Escape") {
+			event.preventDefault();
+			searchField?.focus();
+		}
+	}
+
+	async function useCustomSpec() {
 		customMode = true;
 		customSpec = versionSpec;
+		await tick();
+		customField?.focus();
 	}
 
-	function usePublishedVersions() {
+	async function usePublishedVersions() {
 		customMode = false;
 		customSpec = "";
 		versionSpec = "latest";
+		await tick();
+		versionField?.focus();
 	}
 
 	function retrySearch() {
@@ -444,7 +483,7 @@
 		}
 	}
 
-	function clearSelection() {
+	async function clearSelection() {
 		loadRequestId += 1;
 		packument = null;
 		packageName = "";
@@ -459,6 +498,8 @@
 		searchError = "";
 		searchLoading = false;
 		searchAttempted = false;
+		await tick();
+		searchField?.focus();
 	}
 
 	function start() {
@@ -548,277 +589,243 @@
 	}
 </script>
 
-<Stack gap="xl">
-	{#if packageLoading}
-		<p class="status" aria-live="polite">
-			Loading {pendingPackage} from the npm registry…
-		</p>
-	{:else if packageError}
-		<Stack gap="sm">
-			<Alert tone="danger" title="Could not load package">
-				{packageError}
-			</Alert>
-			<Inline gap="sm" wrap>
-				<Button variant="link" onclick={retryLoad} disabled={disabled}>
-					Retry
-				</Button>
-				<Button
-					variant="link"
-					onclick={clearSelection}
-					disabled={disabled}
-				>
-					Choose another package
-				</Button>
-			</Inline>
-		</Stack>
-	{:else if packument}
-		<Stack gap="xl">
-			<div class="package-header">
-				<Stack gap="xs">
-					<Text variant="subheading" as="h2">{packageName}</Text>
-					{#if packument.description}
-						<Text variant="body-sm" tone="secondary">
-							{packument.description}
-						</Text>
-					{/if}
-				</Stack>
-				<Button variant="ghost" onclick={clearSelection} {disabled}>
-					Change package
-				</Button>
-			</div>
-
-			{#if isDeprecated && resolvedMeta?.deprecated}
-				<Alert tone="warning" title="Deprecated version">
-					{resolvedMeta.deprecated}
-				</Alert>
-			{/if}
-
-			<Stack gap="md">
-				{#if customMode}
-					<div class="field">
-						<label class="field__label" for="version-spec">
-							Version specification
-						</label>
-						<input
-							id="version-spec"
-							class="input"
-							value={customSpec}
-							oninput={(event) => {
-								customSpec = event.currentTarget.value;
-							}}
-							placeholder="^18.0.0 or next"
-							disabled={disabled}
-							aria-describedby="version-spec-help"
-							aria-invalid={customSpecError ? "true" : undefined}
-						/>
-						<p class="field__help" id="version-spec-help">
-							Exact version, range, or published tag.
-						</p>
-						{#if customSpecError}
-							<p class="field__error" role="alert">
-								{customSpecError}
-							</p>
-						{/if}
-					</div>
-				{:else}
-					<Combobox
-						label="Version"
-						placeholder={resolvedVersion || latestVersion}
-						items={versionOptions}
-						groups={["Dist-tags", "Versions"]}
-						value={versionSpec}
-						onValueChange={handleVersionSelect}
-						filterMode="client"
-						clearQueryOnClose
-						restoreValueOnClose
-						selectOnFocus
-						triggerLabel="Open options"
-						{disabled}
-					/>
+{#if packument}
+	<div class="border-bottom pb-2 mb-3">
+		<div
+			class="d-flex flex-wrap align-items-start justify-content-between gap-2"
+		>
+			<div class="flex-grow-1">
+				<h2 class="h5 mb-1">{packageName}</h2>
+				{#if packument.description}
+					<p class="text-body-secondary mb-1">{packument.description}</p>
 				{/if}
-
-				<p class="version-summary" data-testid="version-summary">
-					Requested: <span class="mono">{effectiveVersionSpec}</span>
-					<span class="version-summary__sep" aria-hidden="true">·</span>
-					Resolves to:
-					<span class="mono">{resolvedVersion || "at build time"}</span>
-					{#if selectedSize !== undefined}
-						<span class="version-summary__sep" aria-hidden="true">·</span>
-						{formatBytes(selectedSize)} unpacked
-					{/if}
+				<p class="small mb-0">
+					<span class="text-body-secondary">Requested:</span>
+					{effectiveVersionSpec}{#if resolvedVersion && resolvedVersion !== effectiveVersionSpec}{" · "}<span class="text-body-secondary">Resolved:</span>
+						{resolvedVersion}{:else if !resolvedVersion && effectiveVersionSpec}{" · "}<span class="text-body-secondary">Resolved during build</span>{/if}{#if selectedSize !== undefined}{" · "}{formatBytes(selectedSize)} unpacked{/if}
 				</p>
+			</div>
+			<Button
+				color="outline-secondary"
+				size="sm"
+				on:click={clearSelection}
+				{disabled}>Change package</Button
+			>
+		</div>
+	</div>
 
-				<Inline>
-					{#if customMode}
-						<Button
-							variant="link"
-							onclick={usePublishedVersions}
-							{disabled}
-						>
-							Browse versions
-						</Button>
-					{:else}
-						<Button variant="link" onclick={useCustomSpec} {disabled}>
-							Use a version range or tag
-						</Button>
-					{/if}
-				</Inline>
+	{#if isDeprecated && resolvedMeta?.deprecated}
+		<div class="alert alert-warning" role="alert">
+			<h3 class="alert-heading h6">Deprecated version</h3>
+			<p class="mb-0">{resolvedMeta.deprecated}</p>
+		</div>
+	{/if}
 
+	<div class="row g-2 align-items-end mb-3">
+		<div class="col-12 col-md-6 col-xl-4">
+			{#if customMode}
+				<label class="form-label" for="custom-version">
+					Version specification
+				</label>
+				<Input
+					id="custom-version"
+					value={customSpec}
+					placeholder="^18.0.0 or next"
+					invalid={Boolean(customSpecError)}
+					feedback={customSpecError || undefined}
+					aria-invalid={customSpecError ? "true" : undefined}
+					on:input={handleCustomSpecInput}
+					bind:inner={customField}
+					{disabled}
+				/>
+				<div class="form-text">
+					Exact version, semver range, or published tag.
+				</div>
+			{:else}
+				<label class="form-label" for="version-select">Version</label>
+				<Input
+					id="version-select"
+					type="select"
+					value={versionSpec}
+					on:change={handleVersionChange}
+					bind:inner={versionField}
+					{disabled}
+				>
+					<optgroup label="Dist-tags">
+						{#each tagOptions as option (option.value)}
+							<option value={option.value}>
+								{option.label} → {option.version}
+							</option>
+						{/each}
+					</optgroup>
+					<optgroup label="Versions">
+						{#each sortedVersions.slice(0, MAX_VISIBLE_VERSIONS) as [version, meta] (version)}
+							{@const details = describeVersion(version, meta)}
+							<option value={version}>
+								{version}{details ? ` — ${details}` : ""}
+							</option>
+						{/each}
+					</optgroup>
+				</Input>
 				{#if capped}
-					<Text variant="body-sm" tone="secondary">
+					<div class="form-text">
 						Showing the {MAX_VISIBLE_VERSIONS} newest versions. Use a
 						custom specification for older versions.
-					</Text>
-				{/if}
-			</Stack>
-
-			<div class="action-row">
-				<Button variant="primary" disabled={!canStart} onclick={start}>
-					Create bundle
-				</Button>
-			</div>
-			{#if disabled}
-				<Text variant="body-sm" tone="secondary">{disabledReason}</Text>
-			{/if}
-		</Stack>
-	{:else}
-		<Stack gap="lg">
-			<Combobox
-				label="Package"
-				placeholder="Search npm packages…"
-				items={searchOptions}
-				value={pendingPackage}
-				onValueChange={selectPackageValue}
-				onInputValueChange={(value) => {
-					searchTerm = value;
-				}}
-				onOpenChange={(open) => {
-					if (open) void searchPackages(searchTerm);
-				}}
-				filterMode="manual"
-				loading={searchLoading}
-				emptyLabel={searchEmptyLabel}
-				triggerLabel="Browse packages"
-				clearQueryOnClose={false}
-				{disabled}
-			/>
-			{#if searchError}
-				<Stack gap="sm">
-					<Alert tone="danger" title="Could not search npm">
-						{searchError}
-					</Alert>
-					<Inline gap="sm">
-						<Button
-							variant="link"
-							onclick={retrySearch}
-							disabled={disabled}
-						>
-							Retry search
-						</Button>
-					</Inline>
-				</Stack>
-			{/if}
-			{#if searchTerm.trim().length === 0}
-				<div class="recommended">
-					<p class="recommended__label">Popular packages</p>
-					<div class="recommended__list">
-						{#each POPULAR_PACKAGES as name}
-							<button
-								class="recommended__item"
-								type="button"
-								onclick={() => selectPopular(name)}
-								disabled={disabled}
-							>
-								{name}
-							</button>
-						{/each}
 					</div>
+				{/if}
+			{/if}
+		</div>
+		<div class="col-auto">
+			<Button color="primary" disabled={!canStart} on:click={start}>
+				Create bundle
+			</Button>
+		</div>
+	</div>
+
+	<details class="mb-2">
+		<summary class="small text-body-secondary">Advanced options</summary>
+		<div class="mt-2">
+			{#if customMode}
+				<p class="small text-body-secondary mb-1">
+					Enter an exact version, a semver range, or a published dist-tag.
+				</p>
+				<Button
+					color="link"
+					size="sm"
+					class="p-0"
+					on:click={usePublishedVersions}
+					{disabled}>Browse published versions</Button
+				>
+			{:else}
+				<p class="small text-body-secondary mb-1">
+					Choose a published version above, or specify a range or tag.
+				</p>
+				<Button
+					color="link"
+					size="sm"
+					class="p-0"
+					on:click={useCustomSpec}
+					{disabled}>Use a version range or tag</Button
+				>
+			{/if}
+		</div>
+	</details>
+
+	{#if disabled}
+		<p class="small text-body-secondary mb-0">{disabledReason}</p>
+	{/if}
+{:else}
+	<div class="row mb-2">
+		<div class="col-12 col-xl-8">
+			<label class="form-label" for="package-search">Package</label>
+			<Input
+				id="package-search"
+				type="search"
+				value={searchTerm}
+				placeholder="Search npm packages…"
+				autocomplete="off"
+				spellcheck="false"
+				invalid={Boolean(packageError)}
+				aria-invalid={packageError ? "true" : undefined}
+				disabled={disabled || packageLoading}
+				on:input={handleSearchInput}
+				on:keydown={handleSearchKeydown}
+				bind:inner={searchField}
+			/>
+
+			{#if packageLoading}
+				<div
+					class="d-flex align-items-center gap-2 small text-body-secondary mt-1"
+					aria-live="polite"
+				>
+					<Spinner size="sm" />
+					Loading {pendingPackage}…
+				</div>
+			{:else if packageError}
+				<div class="small text-danger mt-1" role="alert">
+					{packageError}
+				</div>
+				<div class="d-flex flex-wrap gap-3 mt-1">
+					<Button color="link" size="sm" class="p-0" on:click={retryLoad}>
+						Retry
+					</Button>
+					<Button
+						color="link"
+						size="sm"
+						class="p-0"
+						on:click={clearSelection}>Choose another package</Button
+					>
+				</div>
+			{:else if searchLoading}
+				<div
+					class="d-flex align-items-center gap-2 small text-body-secondary mt-1"
+					aria-live="polite"
+				>
+					<Spinner size="sm" />
+					Searching npm…
+				</div>
+			{:else if searchError}
+				<div class="small text-danger mt-1" role="alert">
+					{searchError}
+					<Button
+						color="link"
+						size="sm"
+						class="p-0 ms-1"
+						on:click={retrySearch}>Retry</Button
+					>
+				</div>
+			{:else if searchResults.length > 0}
+				<div
+					class="list-group app-result-list mt-2"
+					bind:this={resultsList}
+					aria-label="Package search results"
+				>
+					{#each searchResults as item, index (item.name)}
+						<button
+							type="button"
+							class="list-group-item list-group-item-action py-2"
+							data-result
+							disabled={disabled}
+							onclick={() => selectPackageValue(item.name)}
+							onkeydown={(event) =>
+								handleResultKeydown(event, index)}
+						>
+							<span class="fw-semibold">{item.name}</span>
+							{#if item.version}
+								<span class="small text-body-secondary ms-2">
+									{item.version}
+								</span>
+							{/if}
+							{#if item.description}
+								<span class="small text-body-secondary ms-2">
+									— {truncate(item.description, 120)}
+								</span>
+							{/if}
+						</button>
+					{/each}
+				</div>
+			{:else if searchEmptyMessage}
+				<p class="small text-body-secondary mt-1 mb-0" role="status">
+					{searchEmptyMessage}
+				</p>
+			{/if}
+
+			{#if !packageLoading && !packageError && searchTerm.trim().length === 0}
+				<div class="small mt-2">
+					<span class="text-body-secondary">Popular:</span>
+					{#each POPULAR_PACKAGES as name}
+						<Button
+							color="link"
+							size="sm"
+							class="p-0 ms-2"
+							disabled={disabled}
+							on:click={() => selectPopular(name)}
+						>
+							{name}
+						</Button>
+					{/each}
 				</div>
 			{/if}
-		</Stack>
-	{/if}
-</Stack>
-
-<style>
-	.status {
-		margin: 0;
-		color: var(--color-text-secondary);
-		font-size: var(--font-size-body);
-		line-height: var(--font-leading-body);
-	}
-
-	.package-header {
-		display: flex;
-		align-items: flex-start;
-		justify-content: space-between;
-		gap: var(--space-4);
-		flex-wrap: wrap;
-	}
-
-	.version-summary {
-		margin: 0;
-		color: var(--color-text-secondary);
-		font-size: var(--font-size-body);
-		line-height: var(--font-leading-body);
-	}
-
-	.version-summary__sep {
-		color: var(--color-text-muted);
-	}
-
-	.recommended {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-2);
-	}
-
-	.recommended__label {
-		margin: 0;
-		color: var(--color-text-secondary);
-		font-size: var(--font-size-body);
-		line-height: var(--font-leading-body);
-	}
-
-	.recommended__list {
-		display: flex;
-		flex-wrap: wrap;
-		gap: var(--space-3);
-	}
-
-	.recommended__item {
-		padding: 0;
-		border: 0;
-		background: none;
-		color: var(--color-primary);
-		font-family: var(--font-mono);
-		font-size: var(--font-size-body);
-		line-height: var(--font-leading-body);
-		cursor: pointer;
-	}
-
-	@media (hover: hover) and (pointer: fine) {
-		.recommended__item:hover {
-			color: var(--color-primary-hover);
-			text-decoration: underline;
-			text-underline-offset: var(--space-1);
-		}
-	}
-
-	.recommended__item:focus-visible {
-		outline: var(--border-width-emphasis) solid var(--color-primary);
-		outline-offset: var(--space-1);
-	}
-
-	.recommended__item:disabled {
-		color: var(--color-text-disabled);
-		cursor: not-allowed;
-	}
-
-	.action-row {
-		display: flex;
-		align-items: center;
-		gap: var(--space-4);
-		flex-wrap: wrap;
-	}
-
-</style>
+		</div>
+	</div>
+{/if}

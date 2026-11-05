@@ -38,7 +38,8 @@ requirements before relying on it in an air-gapped environment.
 - Svelte 5
 - TypeScript
 - Vite
-- [`@t128n/ui`](https://github.com/t128n/design) (design system)
+- [Bootstrap 5](https://getbootstrap.com/)
+- [SvelteStrap](https://sveltestrap.js.org/)
 - WebContainers
 
 ## Requirements
@@ -69,7 +70,7 @@ bun run build
   manifest, manifest patching, pack-output parsing, bounded logging, and the
   `runBundle` orchestrator.
 - `src/lib/runtime/` — WebContainer adapter and an in-memory fake for tests.
-- `src/components/` — Svelte UI composed from `@t128n/ui`.
+- `src/components/` — Svelte UI built with Bootstrap 5 and SvelteStrap.
 
 The core has no DOM, network, or filesystem access. The caller owns the Blob
 URL and the download UI.

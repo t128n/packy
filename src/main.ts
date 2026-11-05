@@ -1,10 +1,6 @@
-import "@fontsource/geist/latin-400.css";
-import "@fontsource/geist/latin-500.css";
-import "@fontsource/geist/latin-600.css";
-import "@fontsource/geist-mono/latin-400.css";
+import "bootstrap/dist/css/bootstrap.min.css";
 import { mount } from "svelte";
 
-import "~/styles/tokens.css";
 import "~/app.css";
 import App from "~/App.svelte";
 

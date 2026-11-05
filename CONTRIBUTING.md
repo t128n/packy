@@ -15,8 +15,11 @@
 
 - Keep changes focused and small.
 - Use Svelte 5 runes and `onclick` event attributes.
-- Use `@t128n/ui` components and semantic tokens. Do not add Tailwind, another
-  component library, another icon family, raw colors, or one-off control styles.
+- Use Bootstrap 5 utilities and SvelteStrap components. Do not add another
+  component library, a new token system, or broad custom styling. Keep
+  application-specific CSS limited to genuine layout and behavior needs.
 - Keep `src/lib/core/` free of Svelte, DOM, network, and filesystem access.
 - Add `bun:test` coverage for core behavior changes.
+- `src/sveltestrap.d.ts` is a compatibility shim for SvelteStrap's Svelte 3-era
+  type declarations. Remove it when upstream publishes Svelte 5 types.
 - Include a clear summary in the pull request template.
