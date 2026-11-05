@@ -1,6 +1,5 @@
 <script lang="ts">
-	import { Alert, Button, Code, Icon, Inline, Stack, Text } from "@t128n/ui";
-	import DownloadIcon from "~icons/carbon/download";
+	import { Button } from "sveltestrap";
 
 	type Props = {
 		result: {
@@ -15,7 +14,13 @@
 		onReset: () => void;
 	};
 
-	let { result, downloadUrl, downloadError = "", onDownload, onReset }: Props = $props();
+	let {
+		result,
+		downloadUrl,
+		downloadError = "",
+		onDownload,
+		onReset,
+	}: Props = $props();
 
 	let copied = $state(false);
 	let copyError = $state<string | null>(null);
@@ -55,61 +60,54 @@
 	}
 </script>
 
-<Stack gap="lg">
-	<Stack gap="sm">
-		<Inline align="center" gap="sm" wrap>
-			<Code>{result.name}@{result.version}</Code>
-			<Text variant="body-sm" tone="secondary" numeric>
-				{formatBytes(result.bytes.byteLength)} compressed
-			</Text>
-		</Inline>
-		<div class="filename">
-			<Code>{result.filename}</Code>
-		</div>
-	</Stack>
+<dl class="row mb-4">
+	<dt class="col-sm-3 fw-normal text-body-secondary">Package</dt>
+	<dd class="col-sm-9"><code>{result.name}@{result.version}</code></dd>
 
-	<Inline align="center" gap="sm" wrap>
-		<Button
-			variant="primary"
-			disabled={!downloadUrl}
-			onclick={onDownload}
-		>
-			<Icon icon={DownloadIcon} />
-			Download bundle
-		</Button>
-		<Button variant="secondary" onclick={onReset}>
-			Create another bundle
-		</Button>
-	</Inline>
-	{#if downloadError}
-		<Alert tone="danger" title="Download could not start">{downloadError}</Alert>
+	<dt class="col-sm-3 fw-normal text-body-secondary">Archive</dt>
+	<dd class="col-sm-9"><code class="text-break">{result.filename}</code></dd>
+
+	<dt class="col-sm-3 fw-normal text-body-secondary">Size</dt>
+	<dd class="col-sm-9">{formatBytes(result.bytes.byteLength)} compressed</dd>
+</dl>
+
+<div class="d-flex flex-wrap gap-2 mb-3">
+	<Button color="primary" disabled={!downloadUrl} on:click={onDownload}>
+		Download bundle
+	</Button>
+	<Button color="outline-secondary" on:click={onReset}>
+		Create another bundle
+	</Button>
+</div>
+
+{#if downloadError}
+	<div class="alert alert-danger" role="alert">
+		<h4 class="alert-heading">Download could not start</h4>
+		<p class="mb-0">{downloadError}</p>
+	</div>
+{/if}
+
+<h4 class="h5 mt-4">Install offline</h4>
+<p>
+	Place the archive in a <code>./packages</code> folder inside your project, then
+	run this command to prevent dependency install scripts from running:
+</p>
+<pre class="app-log mb-2"><code>{installCommand}</code></pre>
+
+<div class="d-flex flex-wrap align-items-center gap-2">
+	<Button color="outline-secondary" size="sm" on:click={copyCommand}>
+		Copy command
+	</Button>
+	{#if copied}
+		<span class="small text-success" aria-live="polite">Copied</span>
 	{/if}
+</div>
 
-	<Stack gap="sm">
-		<Text as="h3" variant="subheading">Install locally</Text>
-		<Text variant="body-sm">
-			Place the archive in a <Code>./packages</Code> folder inside your project,
-			then run this command to prevent dependency install scripts from running:
-		</Text>
-		<Code block>{installCommand}</Code>
-		<Inline align="center" gap="sm" wrap>
-			<Button variant="secondary" onclick={copyCommand}>Copy command</Button>
-			{#if copied}
-				<Text as="span" variant="body-sm" tone="success" aria-live="polite">
-					Copied
-				</Text>
-			{/if}
-		</Inline>
-		{#if copyError}
-			<Text variant="body-sm" tone="danger" role="alert">
-				{copyError}
-			</Text>
-		{/if}
-	</Stack>
-</Stack>
+{#if copyError}
+	<p class="small text-danger mt-2 mb-0" role="alert">{copyError}</p>
+{/if}
 
-<style>
-	.filename :global(code) {
-		overflow-wrap: anywhere;
-	}
-</style>
+<p class="small text-body-secondary mt-3 mb-0">
+	The command uses <code>--ignore-scripts</code>. Packages that rely on install
+	scripts may need additional steps to work offline.
+</p>

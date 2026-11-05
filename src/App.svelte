@@ -1,12 +1,5 @@
 <script lang="ts">
-	import {
-		Alert,
-		AppShell,
-		Container,
-		Page,
-		PageHeader,
-		Section,
-	} from "@t128n/ui";
+	import { Container } from "sveltestrap";
 	import { onDestroy, onMount, tick } from "svelte";
 
 	import AppFooter from "~/components/app-footer.svelte";
@@ -32,6 +25,14 @@
 		exitCode?: number;
 	};
 
+	const stageLabels: Record<RunStage, string> = {
+		prepare: "Preparing a workspace",
+		install: "Installing the package",
+		patch: "Preparing the manifest",
+		pack: "Creating the archive",
+		capture: "Reading the archive",
+	};
+
 	const runtime = createWebContainerRuntime();
 
 	let phase = $state<Phase>("idle");
@@ -47,6 +48,26 @@
 	let workflowRegion = $state<HTMLElement>();
 	let pickerRegion = $state<HTMLElement>();
 	let destroyed = false;
+
+	let statusMessage = $derived.by(() => {
+		if (phase === "running") {
+			return stage
+				? `${stageLabels[stage]} in progress.`
+				: "Starting the build.";
+		}
+
+		if (phase === "done" && result) {
+			return `Bundle ready: ${result.name}@${result.version}.`;
+		}
+
+		if (phase === "error") {
+			return failure
+				? `Build failed at ${stageLabels[failure.stage].toLowerCase()}.`
+				: "The build failed.";
+		}
+
+		return "";
+	});
 
 	onMount(() => {
 		crossOriginIsolated = Boolean(globalThis.crossOriginIsolated);
@@ -191,77 +212,106 @@
 	}
 </script>
 
-<div class="app-frame">
-	<AppShell>
-		{#snippet navbar()}
-			<AppNavbar />
-		{/snippet}
+<div class="d-flex min-vh-100 flex-column">
+	<AppNavbar />
 
-		<Page gap="xl" class="task-column">
-			<PageHeader
-				title="Create an offline bundle"
-				description="Choose one npm package to create an archive for offline installation."
-			/>
+	<main class="flex-grow-1 py-4">
+		<Container class="app-container">
+			<div class="visually-hidden" aria-live="polite" aria-atomic="true">
+				{statusMessage}
+			</div>
 
 			{#if !crossOriginIsolated}
-				<Alert
-					tone="warning"
-					title="Cross-origin isolation is not active yet"
-				>
-					packy needs cross-origin isolation to run WebContainers.
-					If this message stays after a reload, serve the site with
-					COOP and COEP headers or check that the service worker is
-					allowed to load.
-				</Alert>
+				<div class="alert alert-warning" role="alert">
+					<h4 class="alert-heading">
+						Cross-origin isolation is not active yet
+					</h4>
+					<p class="mb-0">
+						packy needs cross-origin isolation to run WebContainers. If
+						this message stays after a reload, serve the site with COOP and
+						COEP headers or check that the service worker is allowed to
+						load.
+					</p>
+				</div>
 			{/if}
 
-			<div hidden={phase !== "idle"} bind:this={pickerRegion}>
-				<Section>
+			<header class="mb-4">
+				<h1 class="h2 mb-2">Create an offline npm bundle</h1>
+				<p class="lead mb-2">
+					Bundle one npm package and its dependencies into a downloadable
+					archive for offline installation. Everything runs in your browser.
+				</p>
+				<p class="small text-body-secondary mb-0">
+					Creating a bundle requires registry access. Installing the archive
+					does not.
+				</p>
+			</header>
+
+			<section id="bundle" aria-labelledby="bundle-heading" class="mb-5">
+				<h2 id="bundle-heading" class="h4">Bundle</h2>
+
+				<div hidden={phase !== "idle"} bind:this={pickerRegion}>
 					{#key pickerKey}
-						<PackagePicker disabled={!crossOriginIsolated} disabledReason="Cross-origin isolation is required to build an archive." onStart={start} />
+						<PackagePicker
+							disabled={!crossOriginIsolated}
+							disabledReason="Cross-origin isolation is required to build an archive."
+							onStart={start}
+						/>
 					{/key}
-				</Section>
-			</div>
-			{#if phase === "running" || phase === "error"}
-				<div bind:this={workflowRegion} tabindex="-1" class="workflow-focus">
-				<Section
-					title={phase === "error" ? "Bundle could not be created" : "Creating your bundle"}
-					description={reference
-						? `${phase === "error" ? "Build failed for" : "Building"} ${reference.name}@${reference.versionSpec}.`
-						: phase === "error"
-							? "The build failed."
-							: "Building the archive."}
-				>
-					<RunView
-						{stage}
-						{log}
-						error={failure}
-						running={phase === "running"}
-						onRetry={retry}
-						onReset={editConfiguration}
-					/>
-				</Section>
 				</div>
-			{:else if result !== null}
-				<div bind:this={workflowRegion} tabindex="-1" class="workflow-focus">
-				<Section
-					title="Bundle ready"
-				>
-					<ResultView
-						{result}
-						{downloadUrl}
-						{downloadError}
-						onDownload={download}
-						onReset={reset}
-					/>
-				</Section>
-				</div>
-			{/if}
 
-		</Page>
-	</AppShell>
+				{#if phase === "running" || phase === "error"}
+					<div bind:this={workflowRegion} tabindex="-1" class="workflow-focus">
+						<h3 class="h5">
+							{phase === "error" ? "Build failed" : "Building bundle"}
+						</h3>
+						{#if reference}
+							<p class="text-body-secondary">
+								<code>{reference.name}@{reference.versionSpec}</code>
+							</p>
+						{/if}
+						<RunView
+							{stage}
+							{log}
+							error={failure}
+							running={phase === "running"}
+							onRetry={retry}
+							onReset={editConfiguration}
+						/>
+					</div>
+				{:else if result !== null}
+					<div bind:this={workflowRegion} tabindex="-1" class="workflow-focus">
+						<h3 class="h5">Bundle ready</h3>
+						<ResultView
+							{result}
+							{downloadUrl}
+							{downloadError}
+							onDownload={download}
+							onReset={reset}
+						/>
+					</div>
+				{/if}
+			</section>
 
-	<Container width="content" padding="xl">
-		<AppFooter />
-	</Container>
+			<section
+				id="how-it-works"
+				aria-labelledby="how-it-works-heading"
+				class="border-top pt-4"
+			>
+				<h2 id="how-it-works-heading" class="h4">How it works</h2>
+				<p>
+					Packy loads the selected package and its dependencies from npm,
+					prepares an archive that can be installed without registry access,
+					and keeps the package’s resolved dependency tree inside it.
+				</p>
+				<p class="mb-0">
+					Installing the archive does not need npm. Native binaries and
+					packages that depend on install scripts may still require extra
+					preparation, so verify each archive before relying on it offline.
+				</p>
+			</section>
+		</Container>
+	</main>
+
+	<AppFooter />
 </div>

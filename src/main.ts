@@ -1,4 +1,4 @@
-import "@t128n/ui/styles";
+import "bootstrap/dist/css/bootstrap.min.css";
 import { mount } from "svelte";
 
 import "~/app.css";

@@ -2,6 +2,5 @@
 	"$schema": "https://unpkg.com/knip@6/schema.json",
 	"tags": ["-lintignore"],
 	"ignoreFiles": ["public/coi-serviceworker.js", "taze.config.ts"],
-	"ignoreDependencies": ["@iconify-json/carbon", "coi-serviceworker"],
-	"ignoreUnresolved": ["~icons/*"]
+	"ignoreDependencies": ["coi-serviceworker"]
 }

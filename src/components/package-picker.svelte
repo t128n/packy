@@ -1,14 +1,7 @@
 <script lang="ts">
-	import {
-		Alert,
-		Button,
-		Combobox,
-		Inline,
-		Input,
-		Stack,
-		Text,
-	} from "@t128n/ui";
+	import { Button, Input, Spinner } from "sveltestrap";
 	import { valid, validRange, maxSatisfying } from "semver";
+	import { tick } from "svelte";
 
 	import {
 		compareVersionsDesc,
@@ -46,6 +39,7 @@
 	const FORBIDDEN_SPEC =
 		/^(?:file:|link:|workspace:|git\+|https?:|npm:)|[/\\]|^\./i;
 	const NEWLINE = /[\r\n]/;
+	const WHITESPACE = /\s/;
 
 	let searchTerm = $state("");
 	let searchResults = $state<RegistrySearchResult[]>([]);
@@ -60,12 +54,16 @@
 	let pendingPackage = $state("");
 
 	let versionSpec = $state("latest");
-	let versionFilter = $state("");
 	let customMode = $state(false);
 	let customSpec = $state("");
 
 	let searchRequestId = 0;
 	let loadRequestId = 0;
+
+	let searchField = $state<HTMLInputElement>();
+	let versionField = $state<HTMLSelectElement>();
+	let customField = $state<HTMLInputElement>();
+	let resultsList = $state<HTMLElement>();
 
 	const packumentCache = new Map<string, RegistryPackument>();
 
@@ -106,11 +104,10 @@
 		},
 	);
 
-	let versionCount = $derived(sortedVersions.length);
 	let latestVersion = $derived(
 		packument?.["dist-tags"].latest ?? sortedVersions[0]?.[0] ?? "",
 	);
-	let capped = $derived(versionCount > MAX_VISIBLE_VERSIONS);
+	let capped = $derived(sortedVersions.length > MAX_VISIBLE_VERSIONS);
 
 	let tagOptions = $derived.by(() => {
 		const currentPackument = packument;
@@ -121,8 +118,7 @@
 
 		return Object.entries(currentPackument["dist-tags"])
 			.filter(
-				([tag]) =>
-					!Object.hasOwn(currentPackument.versions, tag),
+				([tag]) => !Object.hasOwn(currentPackument.versions, tag),
 			)
 			.toSorted(([left], [right]) => {
 				if (left === "latest") {
@@ -135,36 +131,8 @@
 
 				return left.localeCompare(right);
 			})
-			.map(([tag, version]) => ({
-				value: tag,
-				label: tag,
-				description: `→ ${version}`,
-				group: "Dist-tags",
-			}));
+			.map(([tag, version]) => ({ value: tag, label: tag, version }));
 	});
-
-	let versionOptions = $derived.by(() => {
-		const versions = sortedVersions
-			.slice(0, MAX_VISIBLE_VERSIONS)
-			.map(([version, meta]) => ({
-				value: version,
-				label: version,
-				description: describeVersion(version, meta),
-				group: "Versions",
-			}));
-
-		return [...tagOptions, ...versions];
-	});
-
-	let searchOptions = $derived(
-		searchResults.map((result) => ({
-			value: result.name,
-			label: result.name,
-			description: result.description
-				? truncate(result.description, 120)
-				: undefined,
-		})),
-	);
 
 	let searchEmptyMessage = $derived.by(() => {
 		if (
@@ -188,13 +156,6 @@
 
 		return `No packages found for "${term}". Check the spelling and try again.`;
 	});
-
-	let searchEmptyLabel = $derived(
-		searchError
-			? "Search failed. Try again."
-			: searchEmptyMessage || "Type to search npm packages.",
-	);
-
 
 	let effectiveVersionSpec = $derived(
 		customMode ? customSpec.trim() : versionSpec,
@@ -256,28 +217,6 @@
 	);
 	let selectedSize = $derived(resolvedMeta?.dist?.unpackedSize);
 	let isDeprecated = $derived(Boolean(resolvedMeta?.deprecated));
-
-	let summaryVersionText = $derived.by(() => {
-		if (!effectiveVersionSpec) {
-			return "";
-		}
-
-		const parts = [effectiveVersionSpec];
-
-		if (resolvedVersion && resolvedVersion !== effectiveVersionSpec) {
-			parts.push(`resolves to ${resolvedVersion}`);
-		}
-
-		if (!resolvedVersion) {
-			parts.push("resolved during the build");
-		}
-
-		if (selectedSize !== undefined) {
-			parts.push(`${formatBytes(selectedSize)} unpacked`);
-		}
-
-		return parts.join(" · ");
-	});
 
 	let canStart = $derived(
 		Boolean(packageName) &&
@@ -378,6 +317,7 @@
 		searchError = "";
 		searchLoading = false;
 		searchResults = [];
+		searchRequestId += 1;
 
 		try {
 			const data = await loadPackument(trimmed);
@@ -389,10 +329,12 @@
 			packument = data;
 			packageName = data.name;
 			versionSpec = "latest";
-			versionFilter = "";
 			customMode = false;
 			customSpec = "";
 			searchTerm = "";
+			packageLoading = false;
+			await tick();
+			versionField?.focus();
 		} catch (error) {
 			if (requestId !== loadRequestId) {
 				return;
@@ -426,25 +368,94 @@
 		void loadPackage(name);
 	}
 
-	async function handleVersionSelect(value: string) {
-		if (!value || disabled) {
+	function handleSearchInput(event: Event) {
+		searchTerm = (event.currentTarget as HTMLInputElement).value;
+	}
+
+	function handleVersionChange(event: Event) {
+		const value = (event.currentTarget as HTMLSelectElement).value;
+
+		if (value) {
+			versionSpec = value;
+		}
+	}
+
+	function handleCustomSpecInput(event: Event) {
+		customSpec = (event.currentTarget as HTMLInputElement).value;
+	}
+
+	function handleSearchKeydown(event: KeyboardEvent) {
+		if (event.key === "ArrowDown" && searchResults.length > 0) {
+			event.preventDefault();
+			resultsList
+				?.querySelector<HTMLButtonElement>("button[data-result]")
+				?.focus();
 			return;
 		}
 
-		versionSpec = value;
+		if (event.key === "Enter") {
+			event.preventDefault();
+
+			const term = searchTerm.trim();
+
+			if (searchResults.length > 0) {
+				selectPackageValue(searchResults[0]?.name ?? "");
+			} else if (term && !WHITESPACE.test(term)) {
+				void loadPackage(term);
+			}
+			return;
+		}
+
+		if (event.key === "Escape") {
+			searchTerm = "";
+			searchResults = [];
+		}
 	}
 
-	function useCustomSpec() {
+	function handleResultKeydown(event: KeyboardEvent, index: number) {
+		const buttons =
+			resultsList?.querySelectorAll<HTMLButtonElement>("button[data-result]");
+
+		if (!buttons || buttons.length === 0) {
+			return;
+		}
+
+		if (event.key === "ArrowDown") {
+			event.preventDefault();
+			buttons[Math.min(index + 1, buttons.length - 1)]?.focus();
+			return;
+		}
+
+		if (event.key === "ArrowUp") {
+			event.preventDefault();
+
+			if (index === 0) {
+				searchField?.focus();
+			} else {
+				buttons[index - 1]?.focus();
+			}
+			return;
+		}
+
+		if (event.key === "Escape") {
+			event.preventDefault();
+			searchField?.focus();
+		}
+	}
+
+	async function useCustomSpec() {
 		customMode = true;
 		customSpec = versionSpec;
-		versionFilter = "";
+		await tick();
+		customField?.focus();
 	}
 
-	function usePublishedVersions() {
+	async function usePublishedVersions() {
 		customMode = false;
 		customSpec = "";
 		versionSpec = "latest";
-		versionFilter = "";
+		await tick();
+		versionField?.focus();
 	}
 
 	function retrySearch() {
@@ -469,7 +480,7 @@
 		}
 	}
 
-	function clearSelection() {
+	async function clearSelection() {
 		loadRequestId += 1;
 		packument = null;
 		packageName = "";
@@ -477,7 +488,6 @@
 		packageError = "";
 		pendingPackage = "";
 		versionSpec = "latest";
-		versionFilter = "";
 		customMode = false;
 		customSpec = "";
 		searchTerm = "";
@@ -485,6 +495,8 @@
 		searchError = "";
 		searchLoading = false;
 		searchAttempted = false;
+		await tick();
+		searchField?.focus();
 	}
 
 	function start() {
@@ -574,129 +586,233 @@
 	}
 </script>
 
-<Stack gap="lg">
-	{#if packageLoading}
-		<Text variant="body-sm" tone="secondary" aria-live="polite">
-			Loading {pendingPackage} from the npm registry…
-		</Text>
-	{:else if packageError}
-		<Stack gap="sm">
-			<Alert tone="danger" title="Could not load package">
-				{packageError}
-			</Alert>
-			<Inline gap="sm" wrap>
-				<Button variant="link" onclick={retryLoad} disabled={disabled}>
-					Retry
-				</Button>
-				<Button
-					variant="link"
-					onclick={clearSelection}
-					disabled={disabled}
-				>
-					Choose another package
-				</Button>
-			</Inline>
-		</Stack>
-	{:else if packument}
-		<Stack gap="lg">
-			<Inline justify="between" align="start" gap="md" wrap>
-				<Stack gap="xs">
-					<Text variant="subheading" as="h2">{packageName}</Text>
-					{#if packument.description}<Text variant="body-sm" tone="secondary">{packument.description}</Text>{/if}
-				</Stack>
-				<Button variant="secondary" onclick={clearSelection} {disabled}>Change package</Button>
-			</Inline>
-			{#if isDeprecated && resolvedMeta?.deprecated}<Alert tone="warning" title="Deprecated version">{resolvedMeta.deprecated}</Alert>{/if}
-			{#if customMode}
-				<Stack gap="sm">
-					<Input class="version-field" label="Version specification" value={customSpec} oninput={(event) => { customSpec = event.currentTarget.value; }} description="Exact version, range, or published tag." placeholder="^18.0.0 or next" error={customSpecError} {disabled} />
-					<Text variant="body-sm" tone="secondary">Requested: {summaryVersionText}</Text>
-					<Inline><Button variant="link" onclick={usePublishedVersions} {disabled}>Browse versions</Button></Inline>
-				</Stack>
-			{:else}
-				<Stack gap="sm">
-					<Combobox
-						class="version-field"
-						label="Version"
-						items={versionOptions}
-						groups={["Dist-tags", "Versions"]}
-						value={versionSpec}
-						onValueChange={handleVersionSelect}
-						onOpenChange={(open) => {
-							if (open) versionFilter = "";
-						}}
-						placeholder={resolvedVersion || latestVersion}
-						bind:inputValue={versionFilter}
-						{disabled}
-					/>
-					<Text variant="body-sm" tone="secondary">Requested: {effectiveVersionSpec}{#if resolvedVersion && resolvedVersion !== effectiveVersionSpec} · Currently points to {resolvedVersion}; npm resolves the tag when building.{/if}</Text>
-					{#if capped}<Text variant="body-sm" tone="secondary">Showing the {MAX_VISIBLE_VERSIONS} newest versions. Use a custom specification for older versions.</Text>{/if}
-					<Inline><Button variant="link" onclick={useCustomSpec} {disabled}>Use a version range or tag</Button></Inline>
-				</Stack>
-			{/if}
-		</Stack>
-	{:else}
-		<Stack gap="md">
-			<Combobox
-				label="Package"
-				placeholder="Search npm packages…"
-				items={searchOptions}
-				bind:inputValue={searchTerm}
-				bind:value={pendingPackage}
-				onValueChange={selectPackageValue}
-				filterMode="manual"
-				loading={searchLoading}
-				emptyLabel={searchEmptyLabel}
+{#if packageLoading}
+	<div
+		class="d-flex align-items-center gap-2 text-body-secondary"
+		aria-live="polite"
+	>
+		<Spinner size="sm" />
+		Loading {pendingPackage} from the npm registry…
+	</div>
+{:else if packageError}
+	<div class="alert alert-danger" role="alert">
+		<h4 class="alert-heading">Could not load package</h4>
+		<p>{packageError}</p>
+		<div class="d-flex flex-wrap gap-3">
+			<Button color="link" class="p-0" on:click={retryLoad} {disabled}>
+				Retry
+			</Button>
+			<Button color="link" class="p-0" on:click={clearSelection} {disabled}>
+				Choose another package
+			</Button>
+		</div>
+	</div>
+{:else if packument}
+	<div class="border rounded bg-body-tertiary p-3 mb-3">
+		<div
+			class="d-flex flex-wrap align-items-start justify-content-between gap-2"
+		>
+			<div>
+				<h3 class="h5 mb-1">{packageName}</h3>
+				{#if packument.description}
+					<p class="text-body-secondary mb-0">{packument.description}</p>
+				{/if}
+			</div>
+			<Button
+				color="outline-secondary"
+				size="sm"
+				on:click={clearSelection}
+				{disabled}>Change package</Button
+			>
+		</div>
+		<p class="small text-body-secondary mt-3 mb-0">
+			Requested: {effectiveVersionSpec}{#if resolvedVersion && resolvedVersion !== effectiveVersionSpec}{" · "}Currently points to {resolvedVersion}; npm resolves the tag when building.{:else if !resolvedVersion && effectiveVersionSpec}{" · "}npm resolves this when building.{/if}{#if selectedSize !== undefined}{" · "}{formatBytes(selectedSize)} unpacked{/if}
+		</p>
+	</div>
+
+	{#if isDeprecated && resolvedMeta?.deprecated}
+		<div class="alert alert-warning" role="alert">
+			<h4 class="alert-heading">Deprecated version</h4>
+			<p class="mb-0">{resolvedMeta.deprecated}</p>
+		</div>
+	{/if}
+
+	{#if customMode}
+		<div class="mb-3">
+			<label class="form-label" for="custom-version">
+				Version specification
+			</label>
+			<Input
+				id="custom-version"
+				value={customSpec}
+				placeholder="^18.0.0 or next"
+				invalid={Boolean(customSpecError)}
+				feedback={customSpecError || undefined}
+				on:input={handleCustomSpecInput}
+				bind:inner={customField}
 				{disabled}
 			/>
-			{#if searchError}
-				<Stack gap="sm">
-					<Alert tone="danger" title="Could not search npm">
-						{searchError}
-					</Alert>
-					<Inline gap="sm">
-						<Button
-							variant="link"
-							onclick={retrySearch}
-							disabled={disabled}
-						>
-							Retry search
-						</Button>
-					</Inline>
-				</Stack>
+			<div class="form-text">Exact version, semver range, or published tag.</div>
+		</div>
+	{:else}
+		<div class="mb-3">
+			<label class="form-label" for="version-select">Version</label>
+			<Input
+				id="version-select"
+				type="select"
+				value={versionSpec}
+				on:change={handleVersionChange}
+				bind:inner={versionField}
+				{disabled}
+			>
+				<optgroup label="Dist-tags">
+					{#each tagOptions as option (option.value)}
+						<option value={option.value}>
+							{option.label} → {option.version}
+						</option>
+					{/each}
+				</optgroup>
+				<optgroup label="Versions">
+					{#each sortedVersions.slice(0, MAX_VISIBLE_VERSIONS) as [version, meta] (version)}
+						{@const details = describeVersion(version, meta)}
+						<option value={version}>
+							{version}{details ? ` — ${details}` : ""}
+						</option>
+					{/each}
+				</optgroup>
+			</Input>
+			{#if capped}
+				<div class="form-text">
+					Showing the {MAX_VISIBLE_VERSIONS} newest versions. Use a custom
+					specification for older versions.
+				</div>
 			{/if}
-			{#if searchTerm.trim().length === 0}
-				<Stack gap="sm">
-					<Text variant="label" tone="secondary">
-						Popular packages
-					</Text>
-					<Inline gap="sm" wrap>
-						{#each POPULAR_PACKAGES as name}
-							<Button
-								variant="link"
-								onclick={() => selectPopular(name)}
-								disabled={disabled}
-							>
-								{name}
-							</Button>
-						{/each}
-					</Inline>
-				</Stack>
-			{/if}
-		</Stack>
+		</div>
 	{/if}
 
-	{#if packument}
-		<Text variant="body-sm" tone="secondary">Registry access is required to build. Packages requiring install scripts may need extra steps offline.</Text>
-		<Inline gap="sm" align="center" wrap>
-			<Button variant="primary" disabled={!canStart} onclick={start}>Create bundle</Button>
-			{#if disabled}<Text variant="body-sm" tone="secondary">{disabledReason}</Text>{/if}
-		</Inline>
-	{/if}
-</Stack>
+	<details class="mt-3">
+		<summary class="text-body-secondary">Advanced options</summary>
+		<div class="mt-3">
+			{#if customMode}
+				<p class="small text-body-secondary">
+					Enter an exact version, a semver range, or a published dist-tag.
+				</p>
+				<Button
+					color="link"
+					class="p-0"
+					on:click={usePublishedVersions}
+					{disabled}>Browse published versions</Button
+				>
+			{:else}
+				<p class="small text-body-secondary">
+					Choose a published version above, or specify a range or tag.
+				</p>
+				<Button
+					color="link"
+					class="p-0"
+					on:click={useCustomSpec}
+					{disabled}>Use a version range or tag</Button
+				>
+			{/if}
+		</div>
+	</details>
 
-<style>
-	:global(.version-field) {
-		max-width: 28rem;
-	}
-</style>
+	<div class="d-flex flex-wrap align-items-center gap-2 mt-3">
+		<Button color="primary" disabled={!canStart} on:click={start}>
+			Create bundle
+		</Button>
+		{#if disabled}
+			<span class="small text-body-secondary">{disabledReason}</span>
+		{/if}
+	</div>
+
+	<p class="small text-body-secondary mt-2 mb-0">
+		Registry access is required to build. Packages requiring install scripts may
+		need extra steps offline.
+	</p>
+{:else}
+	<div class="mb-3">
+		<label class="form-label" for="package-search">Package</label>
+		<Input
+			id="package-search"
+			type="search"
+			value={searchTerm}
+			placeholder="Search npm packages…"
+			autocomplete="off"
+			spellcheck="false"
+			aria-describedby="package-search-help"
+			on:input={handleSearchInput}
+			on:keydown={handleSearchKeydown}
+			bind:inner={searchField}
+			{disabled}
+		/>
+		<div id="package-search-help" class="form-text">
+			Enter a package name, including scoped packages.
+		</div>
+	</div>
+
+	{#if searchLoading}
+		<div
+			class="d-flex align-items-center gap-2 small text-body-secondary"
+			aria-live="polite"
+		>
+			<Spinner size="sm" />
+			Searching npm…
+		</div>
+	{:else if searchError}
+		<div class="alert alert-danger" role="alert">
+			<h4 class="alert-heading">Could not search npm</h4>
+			<p>{searchError}</p>
+			<Button color="link" class="p-0" on:click={retrySearch} {disabled}>
+				Retry search
+			</Button>
+		</div>
+	{:else if searchResults.length > 0}
+		<div
+			class="list-group app-result-list mb-3"
+			bind:this={resultsList}
+			aria-label="Package search results"
+		>
+			{#each searchResults as item, index (item.name)}
+				<button
+					type="button"
+					class="list-group-item list-group-item-action"
+					data-result
+					disabled={disabled}
+					onclick={() => selectPackageValue(item.name)}
+					onkeydown={(event) => handleResultKeydown(event, index)}
+				>
+					<span class="fw-semibold">{item.name}</span>
+					{#if item.version}
+						<span class="badge text-bg-secondary ms-2">{item.version}</span>
+					{/if}
+					{#if item.description}
+						<span class="d-block small text-body-secondary">
+							{truncate(item.description, 120)}
+						</span>
+					{/if}
+				</button>
+			{/each}
+		</div>
+	{:else if searchEmptyMessage}
+		<p class="small text-body-secondary" role="status">{searchEmptyMessage}</p>
+	{/if}
+
+	{#if searchTerm.trim().length === 0}
+		<div>
+			<p class="small text-body-secondary mb-1">Popular packages</p>
+			<div class="d-flex flex-wrap gap-3">
+				{#each POPULAR_PACKAGES as name}
+					<Button
+						color="link"
+						class="p-0"
+						disabled={disabled}
+						on:click={() => selectPopular(name)}
+					>
+						{name}
+					</Button>
+				{/each}
+			</div>
+		</div>
+	{/if}
+{/if}

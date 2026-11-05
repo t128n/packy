@@ -1,24 +1,40 @@
-/* App-level layout only. Everything visual comes from @t128n/ui tokens. */
+/* Small application-specific adjustments on top of stock Bootstrap. */
 
-html,
-body {
-	min-height: 100%;
-}
-
-body {
-	background: var(--color-workspace);
-}
-
-.app-frame {
-	display: flex;
-	flex-direction: column;
+#app {
 	min-height: 100dvh;
 }
 
-.app-shell {
-	flex: 1;
+.app-container {
+	max-width: 48rem;
 }
 
-.page.task-column {
-	max-width: 45rem;
+.workflow-focus:focus {
+	outline: none;
+}
+
+.workflow-focus:focus-visible {
+	outline: 2px solid var(--bs-primary);
+	outline-offset: 0.25rem;
+}
+
+.app-result-list {
+	max-height: 18rem;
+	overflow-y: auto;
+}
+
+.app-log {
+	max-height: 20rem;
+	margin-bottom: 0;
+	overflow: auto;
+	padding: 0.75rem;
+	border: 1px solid var(--bs-border-color);
+	border-radius: var(--bs-border-radius);
+	background-color: var(--bs-tertiary-bg);
+	font-size: 0.8125rem;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+}
+
+.app-log code {
+	color: inherit;
 }

@@ -1,25 +1,12 @@
 <script lang="ts">
-	import { Inline, Link, Text } from "@t128n/ui";
-
-	const links = [{ label: "t128n.dev", href: "https://t128n.dev" }];
+	import { Container } from "sveltestrap";
 </script>
 
-<footer class="app-footer">
-	<Inline justify="between" align="center" gap="lg" wrap>
-		<Inline gap="xl" wrap>
-			{#each links as link}
-				<Link href={link.href} target="_blank" rel="noreferrer">
-					{link.label}
-				</Link>
-			{/each}
-		</Inline>
-		<Text variant="body-sm" tone="muted">© 2026 Torben Haack</Text>
-	</Inline>
+<footer class="border-top bg-body-tertiary py-3">
+	<Container
+		class="d-flex flex-wrap align-items-center justify-content-between gap-2 small text-body-secondary"
+	>
+		<span>© 2026 Torben Haack</span>
+		<a href="https://t128n.dev" target="_blank" rel="noreferrer">t128n.dev</a>
+	</Container>
 </footer>
-
-<style>
-	.app-footer {
-		padding: var(--space-lg) 0;
-		border-top: var(--border-width) solid var(--color-border);
-	}
-</style>

@@ -8,6 +8,7 @@ const NEXT_RESOLVED = /Currently points to 3\.0\.0-beta\.1/;
 const REQUESTED_ONE = /Requested: 1\.0\.0/;
 const NEW_RESULT = /new-result/;
 const OLD_RESULT = /old-result/;
+const EXAMPLE_RESULT = /@scope\/example/;
 
 const metadata = {
 	name: "@scope/example",
@@ -47,16 +48,12 @@ test.beforeEach(async ({ page }) => {
 test("search, keyboard selection and version validation", async ({ page }) => {
 	const search = page.getByLabel("Package", { exact: true });
 	await search.fill("@scope/example");
-	const option = page
-		.getByRole("option")
-		.filter({ hasText: "@scope/example" })
-		.first();
-	await expect(option).toBeVisible();
 	await search.press("Enter");
 	await expect(
 		page.getByRole("heading", { name: "@scope/example" }),
 	).toBeVisible();
 	await expect(page.getByText(RESOLVED_VERSION)).toBeVisible();
+	await page.getByText("Advanced options").click();
 	await page
 		.getByRole("button", { name: "Use a version range or tag" })
 		.click();
@@ -74,21 +71,19 @@ test("search, keyboard selection and version validation", async ({ page }) => {
 
 test("version selector groups dist-tags and versions", async ({ page }) => {
 	await selectFixture(page);
-	await page.getByRole("button", { name: "Open options" }).click();
-	await expect(page.getByText("Dist-tags")).toBeVisible();
-	await expect(page.getByText("Versions")).toBeVisible();
-	await page.getByRole("option").filter({ hasText: "next" }).click();
+	const version = page.getByLabel("Version", { exact: true });
+	await expect(version.locator("optgroup")).toHaveCount(2);
+	await version.selectOption("next");
 	await expect(page.getByText(REQUESTED_NEXT)).toBeVisible();
 	await expect(page.getByText(NEXT_RESOLVED)).toBeVisible();
-	await page.getByRole("button", { name: "Open options" }).click();
-	await page.getByRole("option").filter({ hasText: "1.0.0" }).click();
+	await version.selectOption("1.0.0");
 	await expect(page.getByText(REQUESTED_ONE)).toBeVisible();
 });
 
 test("mobile layout and footer stay focused", async ({ page }) => {
 	await page.setViewportSize({ width: 320, height: 720 });
 	await expect(
-		page.getByRole("heading", { name: "Create an offline bundle" }),
+		page.getByRole("heading", { name: "Create an offline npm bundle" }),
 	).toBeVisible();
 	await expect(page.locator("footer")).toContainText("© 2026 Torben Haack");
 	await expect(page.locator("footer")).not.toContainText(
@@ -112,11 +107,9 @@ test("no search results explains how to continue", async ({ page }) => {
 	});
 	await page.getByLabel("Package", { exact: true }).fill("missing-package");
 	await expect(
-		page
-			.getByRole("listbox")
-			.getByText(
-				'No packages found for "missing-package". Check the spelling and try again.',
-			),
+		page.getByText(
+			'No packages found for "missing-package". Check the spelling and try again.',
+		),
 	).toBeVisible();
 });
 
@@ -147,13 +140,9 @@ test("an older search response cannot replace newer results", async ({
 	await search.fill("older");
 	await page.waitForTimeout(400);
 	await search.fill("newer");
-	await expect(
-		page.getByRole("option").filter({ hasText: NEW_RESULT }),
-	).toBeVisible();
+	await expect(page.getByRole("button", { name: NEW_RESULT })).toBeVisible();
 	await page.waitForTimeout(1300);
-	await expect(
-		page.getByRole("option").filter({ hasText: OLD_RESULT }),
-	).toHaveCount(0);
+	await expect(page.getByRole("button", { name: OLD_RESULT })).toHaveCount(0);
 });
 
 const fakeRuntime = `
@@ -183,11 +172,7 @@ export function createWebContainerRuntime() {
 
 async function selectFixture(page: import("@playwright/test").Page) {
 	await page.getByLabel("Package", { exact: true }).fill("@scope/example");
-	await page
-		.getByRole("option")
-		.filter({ hasText: "@scope/example" })
-		.first()
-		.click();
+	await page.getByRole("button", { name: EXAMPLE_RESULT }).first().click();
 	await expect(
 		page.getByRole("heading", { name: "@scope/example" }),
 	).toBeVisible();
@@ -217,7 +202,9 @@ test("build, download, copy and reset", async ({ page, context }) => {
 					.__packyCommands,
 		),
 	).toBe(2);
-	await expect(page.getByText("@scope/example@2.0.0")).toBeVisible();
+	await expect(
+		page.getByText("@scope/example@2.0.0", { exact: true }),
+	).toBeVisible();
 	await expect(
 		page.getByText("scope-example-2.0.0.tgz", { exact: true }),
 	).toBeVisible();
