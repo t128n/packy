@@ -1,10 +1,10 @@
 import { expect, test } from "@playwright/test";
 
-const RESOLVED_VERSION = /Currently points to 2\.0\.0/;
+const RESOLVED_VERSION = /Resolved:\s*2\.0\.0/;
 const UNPUBLISHED = /not published/;
 const REQUESTED = /Requested: latest/;
 const REQUESTED_NEXT = /Requested: next/;
-const NEXT_RESOLVED = /Currently points to 3\.0\.0-beta\.1/;
+const NEXT_RESOLVED = /Resolved:\s*3\.0\.0-beta\.1/;
 const REQUESTED_ONE = /Requested: 1\.0\.0/;
 const NEW_RESULT = /new-result/;
 const OLD_RESULT = /old-result/;
@@ -80,10 +80,21 @@ test("version selector groups dist-tags and versions", async ({ page }) => {
 	await expect(page.getByText(REQUESTED_ONE)).toBeVisible();
 });
 
+test("help stays contextual and opens from navigation", async ({ page }) => {
+	const docs = page.getByText("Packy downloads the selected package");
+
+	await expect(docs).toBeVisible();
+	await selectFixture(page);
+	await expect(docs).toBeHidden();
+
+	await page.getByRole("link", { name: "How it works" }).click();
+	await expect(docs).toBeVisible();
+});
+
 test("mobile layout and footer stay focused", async ({ page }) => {
 	await page.setViewportSize({ width: 320, height: 720 });
 	await expect(
-		page.getByRole("heading", { name: "Create an offline npm bundle" }),
+		page.getByRole("heading", { name: "Create bundle" }),
 	).toBeVisible();
 	await expect(page.locator("footer")).toContainText("© 2026 Torben Haack");
 	await expect(page.locator("footer")).not.toContainText(
@@ -256,7 +267,7 @@ test("failed build preserves configuration and supports retry", async ({
 		),
 	).toBeVisible();
 	await expect(page.locator(".workflow-focus")).toBeFocused();
-	await expect(page.getByText("Not run").first()).toBeVisible();
+	await expect(page.getByText("Pending").first()).toBeVisible();
 	await page.getByRole("button", { name: "Edit package or version" }).click();
 	await expect(
 		page.getByRole("heading", { name: "@scope/example" }),

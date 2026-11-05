@@ -60,16 +60,24 @@
 	}
 </script>
 
-<dl class="row mb-4">
-	<dt class="col-sm-3 fw-normal text-body-secondary">Package</dt>
-	<dd class="col-sm-9"><code>{result.name}@{result.version}</code></dd>
-
-	<dt class="col-sm-3 fw-normal text-body-secondary">Archive</dt>
-	<dd class="col-sm-9"><code class="text-break">{result.filename}</code></dd>
-
-	<dt class="col-sm-3 fw-normal text-body-secondary">Size</dt>
-	<dd class="col-sm-9">{formatBytes(result.bytes.byteLength)} compressed</dd>
-</dl>
+<div class="table-responsive">
+	<table class="table table-sm app-meta-table mb-3 w-auto">
+		<tbody>
+			<tr>
+				<th scope="row">Package</th>
+				<td><code>{result.name}@{result.version}</code></td>
+			</tr>
+			<tr>
+				<th scope="row">Archive</th>
+				<td><code class="text-break">{result.filename}</code></td>
+			</tr>
+			<tr>
+				<th scope="row">Size</th>
+				<td>{formatBytes(result.bytes.byteLength)} compressed</td>
+			</tr>
+		</tbody>
+	</table>
+</div>
 
 <div class="d-flex flex-wrap gap-2 mb-3">
 	<Button color="primary" disabled={!downloadUrl} on:click={onDownload}>
@@ -82,32 +90,31 @@
 
 {#if downloadError}
 	<div class="alert alert-danger" role="alert">
-		<h4 class="alert-heading">Download could not start</h4>
+		<h3 class="alert-heading h6">Download could not start</h3>
 		<p class="mb-0">{downloadError}</p>
 	</div>
 {/if}
 
-<h4 class="h5 mt-4">Install offline</h4>
-<p>
-	Place the archive in a <code>./packages</code> folder inside your project, then
-	run this command to prevent dependency install scripts from running:
+<h3 class="h5 mt-4">Install</h3>
+<p class="small text-body-secondary mb-2">
+	Place the archive in <code>./packages</code>, then run:
 </p>
-<pre class="app-log mb-2"><code>{installCommand}</code></pre>
-
-<div class="d-flex flex-wrap align-items-center gap-2">
+<div class="d-flex flex-wrap align-items-start gap-2 mb-2">
+	<pre class="app-log app-install-command"><code>{installCommand}</code></pre>
 	<Button color="outline-secondary" size="sm" on:click={copyCommand}>
 		Copy command
 	</Button>
-	{#if copied}
-		<span class="small text-success" aria-live="polite">Copied</span>
-	{/if}
 </div>
+
+{#if copied}
+	<span class="small text-success" aria-live="polite">Copied</span>
+{/if}
 
 {#if copyError}
 	<p class="small text-danger mt-2 mb-0" role="alert">{copyError}</p>
 {/if}
 
-<p class="small text-body-secondary mt-3 mb-0">
-	The command uses <code>--ignore-scripts</code>. Packages that rely on install
-	scripts may need additional steps to work offline.
+<p class="form-text mb-0">
+	Install scripts are disabled. Packages that require them may need extra
+	preparation.
 </p>

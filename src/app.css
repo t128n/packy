@@ -4,8 +4,8 @@
 	min-height: 100dvh;
 }
 
-.app-container {
-	max-width: 48rem;
+.app-prose {
+	max-width: 75ch;
 }
 
 .workflow-focus:focus {
@@ -18,7 +18,7 @@
 }
 
 .app-result-list {
-	max-height: 18rem;
+	max-height: 16rem;
 	overflow-y: auto;
 }
 
@@ -37,4 +37,15 @@
 
 .app-log code {
 	color: inherit;
+}
+
+.app-install-command {
+	flex: 1 1 20rem;
+	min-width: 0;
+}
+
+.app-meta-table th {
+	width: 10rem;
+	font-weight: 500;
+	color: var(--bs-secondary-color);
 }

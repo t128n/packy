@@ -22,11 +22,11 @@
 	let inputError = $derived(guidance?.action === "edit");
 
 	const operations: Record<RunStage, string> = {
-		prepare: "Preparing a workspace…",
-		install: "Downloading the package and its dependencies…",
-		patch: "Preparing the package for offline installation…",
-		pack: "Creating the archive…",
-		capture: "Reading the completed archive…",
+		prepare: "Preparing workspace…",
+		install: "Downloading dependencies…",
+		patch: "Preparing manifest…",
+		pack: "Creating archive…",
+		capture: "Reading archive…",
 	};
 
 	type StageStatus = "waiting" | "active" | "done" | "failed";
@@ -40,18 +40,18 @@
 	];
 
 	const statusLabels: Record<StageStatus, string> = {
-		waiting: "Not run",
-		active: "In progress",
-		done: "Done",
+		waiting: "Pending",
+		active: "Running",
+		done: "Complete",
 		failed: "Failed",
 	};
 
-	const statusColors = {
-		waiting: "secondary",
-		active: "primary",
-		done: "success",
-		failed: "danger",
-	} as const;
+	const statusClasses: Record<StageStatus, string> = {
+		waiting: "text-body-secondary",
+		active: "text-primary",
+		done: "text-success",
+		failed: "text-danger",
+	};
 
 	function stageIndex(id: RunStage): number {
 		return stages.findIndex((candidate) => candidate.id === id);
@@ -82,38 +82,48 @@
 	}
 </script>
 
-<ol class="list-group list-group-flush mb-3" aria-live="polite">
-	{#each stages as item (item.id)}
-		{@const status = statusFor(item.id)}
-		<li
-			class="list-group-item d-flex align-items-center justify-content-between gap-2 px-0 py-2"
-		>
-			<span>{item.label}</span>
-			{#if status === "active"}
-				<span class="d-inline-flex align-items-center gap-2">
-					<Spinner size="sm" />
-					<span class="badge text-bg-{statusColors[status]}">
-						{statusLabels[status]}
-					</span>
-				</span>
-			{:else}
-				<span class="badge text-bg-{statusColors[status]}">
-					{statusLabels[status]}
-				</span>
-			{/if}
-		</li>
-	{/each}
-</ol>
-
-{#if running}
-	<p class="small text-body-secondary" aria-live="polite">
-		{stage ? operations[stage] : "Starting the build…"}
-	</p>
-{/if}
+<div class="table-responsive">
+	<table class="table table-sm align-middle mb-3">
+		<thead>
+			<tr>
+				<th scope="col">Step</th>
+				<th scope="col">Status</th>
+				<th scope="col">Details</th>
+			</tr>
+		</thead>
+		<tbody aria-live="polite">
+			{#each stages as item (item.id)}
+				{@const status = statusFor(item.id)}
+				<tr>
+					<td>{item.label}</td>
+					<td>
+						{#if status === "active"}
+							<span
+								class="d-inline-flex align-items-center gap-2 text-primary"
+							>
+								<Spinner size="sm" />
+								{statusLabels[status]}
+							</span>
+						{:else}
+							<span class={statusClasses[status]}>
+								{statusLabels[status]}
+							</span>
+						{/if}
+					</td>
+					<td class="small text-body-secondary">
+						{#if status === "active" && stage}
+							{operations[stage]}
+						{/if}
+					</td>
+				</tr>
+			{/each}
+		</tbody>
+	</table>
+</div>
 
 {#if error}
 	<div class="alert alert-danger" role="alert">
-		<h4 class="alert-heading">{stageLabel(error.stage)} failed</h4>
+		<h3 class="alert-heading h6">{stageLabel(error.stage)} failed</h3>
 		<p>{guidance?.message}</p>
 		{#if error.exitCode !== undefined}
 			<p class="small text-body-secondary mb-2">Exit code {error.exitCode}</p>
@@ -134,11 +144,9 @@
 	</div>
 {/if}
 
-{#if log.trim().length === 0}
-	<p class="small text-body-secondary mb-0">No output yet.</p>
-{:else}
+{#if log.trim().length > 0}
 	<details>
-		<summary class="text-body-secondary">Technical details</summary>
+		<summary class="small text-body-secondary">Technical details</summary>
 		<pre class="app-log mt-2"><code>{log}</code></pre>
 	</details>
 {/if}
