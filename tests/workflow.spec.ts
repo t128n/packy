@@ -80,17 +80,6 @@ test("version selector groups dist-tags and versions", async ({ page }) => {
 	await expect(page.getByText(REQUESTED_ONE)).toBeVisible();
 });
 
-test("help stays contextual and opens from navigation", async ({ page }) => {
-	const docs = page.getByText("Packy downloads the selected package");
-
-	await expect(docs).toBeVisible();
-	await selectFixture(page);
-	await expect(docs).toBeHidden();
-
-	await page.getByRole("link", { name: "How it works" }).click();
-	await expect(docs).toBeVisible();
-});
-
 test("mobile layout and footer stay focused", async ({ page }) => {
 	await page.setViewportSize({ width: 320, height: 720 });
 	await expect(

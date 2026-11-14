@@ -1,6 +1,4 @@
 <script lang="ts">
-	import { Button, Spinner } from "sveltestrap";
-
 	import type { RunStage } from "../lib/core/types";
 	import { describeFailure } from "../lib/ui/failure";
 
@@ -46,11 +44,11 @@
 		failed: "Failed",
 	};
 
-	const statusClasses: Record<StageStatus, string> = {
-		waiting: "text-body-secondary",
-		active: "text-primary",
-		done: "text-success",
-		failed: "text-danger",
+	const statusAttributes: Record<StageStatus, string | undefined> = {
+		waiting: undefined,
+		active: "info",
+		done: "ok",
+		failed: "error",
 	};
 
 	function stageIndex(id: RunStage): number {
@@ -82,8 +80,8 @@
 	}
 </script>
 
-<div class="table-responsive">
-	<table class="table table-sm align-middle mb-3">
+<div class="app-table-scroll">
+	<table>
 		<thead>
 			<tr>
 				<th scope="col">Step</th>
@@ -98,19 +96,19 @@
 					<td>{item.label}</td>
 					<td>
 						{#if status === "active"}
-							<span
-								class="d-inline-flex align-items-center gap-2 text-primary"
-							>
-								<Spinner size="sm" />
+							<span aria-busy="true" data-status="info">
 								{statusLabels[status]}
 							</span>
 						{:else}
-							<span class={statusClasses[status]}>
+							<span
+								class={status === "waiting" ? "app-muted" : undefined}
+								data-status={statusAttributes[status]}
+							>
 								{statusLabels[status]}
 							</span>
 						{/if}
 					</td>
-					<td class="small text-body-secondary">
+					<td class="app-muted">
 						{#if status === "active" && stage}
 							{operations[stage]}
 						{/if}
@@ -122,31 +120,36 @@
 </div>
 
 {#if error}
-	<div class="alert alert-danger" role="alert">
-		<h3 class="alert-heading h6">{stageLabel(error.stage)} failed</h3>
+	<aside role="alert" data-status="error">
+		<h3>{stageLabel(error.stage)} failed</h3>
 		<p>{guidance?.message}</p>
 		{#if error.exitCode !== undefined}
-			<p class="small text-body-secondary mb-2">Exit code {error.exitCode}</p>
+			<p class="app-muted"><small>Exit code {error.exitCode}</small></p>
 		{/if}
-		<div class="d-flex flex-wrap gap-2">
-			<Button
-				color={inputError ? "outline-secondary" : "primary"}
-				on:click={onRetry}>Retry</Button
-			>
-			{#if onReset}
-				<Button
-					color={inputError ? "primary" : "link"}
-					class={inputError ? "" : "p-0"}
-					on:click={onReset}>Edit package or version</Button
+		<menu>
+			<li>
+				<button
+					type="button"
+					class={inputError ? undefined : "app-primary"}
+					onclick={onRetry}>Retry</button
 				>
+			</li>
+			{#if onReset}
+				<li>
+					<button
+						type="button"
+						class={inputError ? "app-primary" : undefined}
+						onclick={onReset}>Edit package or version</button
+					>
+				</li>
 			{/if}
-		</div>
-	</div>
+		</menu>
+	</aside>
 {/if}
 
 {#if log.trim().length > 0}
 	<details>
-		<summary class="small text-body-secondary">Technical details</summary>
-		<pre class="app-log mt-2"><code>{log}</code></pre>
+		<summary>Technical details</summary>
+		<pre class="app-log"><code>{log}</code></pre>
 	</details>
 {/if}

@@ -1,0 +1,391 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark light" />
+    <title>open.css — kitchen sink</title>
+    <link rel="stylesheet" href="open.css" />
+  </head>
+  <body>
+    <!-- Status bar: body > header -->
+    <header>
+      <h1>open.css</h1>
+      <nav aria-label="Sections">
+        <ol>
+          <li><a href="#type" aria-current="page">Type</a></li>
+          <li><a href="#panes">Panes</a></li>
+          <li><a href="#windows">Windows</a></li>
+          <li><a href="#controls">Controls</a></li>
+          <li><a href="#data">Data</a></li>
+          <li><a href="#tree">Tree</a></li>
+          <li><a href="#modal">Modal</a></li>
+        </ol>
+      </nav>
+      <small>v0.1.0 · 0 classes</small>
+    </header>
+
+    <main>
+      <p>
+        Every component on this page is a plain HTML element. There is no <code>class</code> attribute anywhere in the
+        source. Press <kbd>Tab</kbd> to walk the focus ring: the focused control inverts, and the pane that holds it
+        lights its border.
+      </p>
+
+      <!-- ─────────────── Typography ─────────────── -->
+      <section id="type">
+        <h2>Typography</h2>
+        <div data-grid="2">
+          <div>
+            <h1>Heading one</h1>
+            <h2>Heading two</h2>
+            <h3>Heading three</h3>
+            <h4>Heading four</h4>
+            <h5>Heading five</h5>
+            <p>
+              One face, one size. Hierarchy is carried by <strong>weight</strong>, <em>slant</em>, case and colour, so
+              every glyph sits in the same cell. Links look like <a href="#type">this</a>, inline code like
+              <code>render()</code>, keys like <kbd>Ctrl</kbd> <kbd>K</kbd>, program output like
+              <samp>exit 0</samp> and variables like <var>width</var>.
+            </p>
+            <p>
+              Edits read as a diff: <del>border-radius: 8px</del> <ins>border-radius: 0</ins>. Search hits are
+              <mark>marked</mark>, <abbr title="Terminal User Interface">TUI</abbr> is an abbreviation, and
+              <small>small print stays the same size, only quieter</small>.
+            </p>
+            <hr />
+            <p>A horizontal rule sits centred in a line of its own.</p>
+          </div>
+          <div>
+            <ul>
+              <li>Unordered items take a two-cell marker</li>
+              <li>
+                Nested lists step in two cells
+                <ul>
+                  <li>and switch to a lighter marker</li>
+                </ul>
+              </li>
+            </ul>
+            <ol>
+              <li>Ordered items</li>
+              <li>keep their numbers</li>
+            </ol>
+            <dl>
+              <dt>Cell</dt>
+              <dd>One character wide, one line tall.</dd>
+              <dt>Pane</dt>
+              <dd>A bordered box that adds exactly one line of height.</dd>
+            </dl>
+            <blockquote>
+              <p>A terminal is a grid first and a typeface second.</p>
+              <cite>the cell matrix</cite>
+            </blockquote>
+            <pre><code>┌─ pre ────────────────────┐
+│ box drawing lines up     │
+│ because 1ch is one cell  │
+└──────────────────────────┘</code></pre>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─────────────── Panes & grid ─────────────── -->
+      <section id="panes">
+        <h2>Panes and grid</h2>
+        <p>
+          <code>&lt;section&gt;</code>, <code>&lt;article&gt;</code> and <code>&lt;aside&gt;</code> are bordered panes. A
+          heading as the first child becomes the pane title on the top border. <code>data-grid</code> subdivides any
+          container; <code>data-span</code> lets a child cover several columns.
+        </p>
+        <div data-grid="4">
+          <article>
+            <h3>single</h3>
+            <p>The default 1px rule.</p>
+          </article>
+          <article data-border="double">
+            <h3>double</h3>
+            <p><code>data-border="double"</code></p>
+          </article>
+          <article data-border="heavy">
+            <h3>heavy</h3>
+            <p><code>data-border="heavy"</code></p>
+          </article>
+          <article data-border="rounded">
+            <h3>rounded</h3>
+            <p><code>data-border="rounded"</code></p>
+          </article>
+          <aside data-rows="2">
+            <h3>aside</h3>
+            <nav aria-label="Sidebar">
+              <ul>
+                <li><a href="#panes" aria-current="true">Sessions</a></li>
+                <li><a href="#panes">Agents</a></li>
+                <li><a href="#panes">Models</a></li>
+                <li><a href="#panes">Keymap</a></li>
+              </ul>
+            </nav>
+          </aside>
+          <article data-span="3">
+            <h3>data-span="3"</h3>
+            <p>
+              This pane spans three of four columns. The sidebar to the left is an <code>&lt;aside&gt;</code> spanning
+              two rows with <code>data-rows="2"</code>; a <code>&lt;nav&gt;</code> inside an aside turns vertical.
+            </p>
+          </article>
+          <article data-span="2">
+            <h3>article with header and footer</h3>
+            <header>
+              <span data-status="ok">● connected</span>
+              <span>build #4821</span>
+            </header>
+            <p>Nested <code>&lt;header&gt;</code> and <code>&lt;footer&gt;</code> lay out as quiet one-line rows.</p>
+            <footer>
+              <span>3 files changed</span>
+              <span><ins>128</ins> <del>41</del></span>
+            </footer>
+          </article>
+          <article data-border="dashed">
+            <h3>dashed</h3>
+            <p>Drop targets, drafts.</p>
+          </article>
+        </div>
+      </section>
+
+      <!-- ─────────────── Titled windows ─────────────── -->
+      <section id="windows">
+        <h2>Titled windows</h2>
+        <div data-grid="3">
+          <fieldset>
+            <legend>Session</legend>
+            <dl>
+              <dt>Model</dt>
+              <dd>local/llm-large</dd>
+              <dt>Context</dt>
+              <dd><meter min="0" max="100" low="60" high="85" optimum="20" value="42">42%</meter> 42%</dd>
+            </dl>
+          </fieldset>
+          <fieldset>
+            <legend>Tasks</legend>
+            <label><input type="checkbox" checked /> Extract tokens</label>
+            <label><input type="checkbox" checked /> Lock the line grid</label>
+            <label><input type="checkbox" /> Ship it</label>
+          </fieldset>
+          <fieldset data-border="double">
+            <legend>Build</legend>
+            <p aria-busy="true">Compiling 14 of 32</p>
+            <p><progress max="32" value="14">14 of 32</progress></p>
+            <p data-status="warn">2 warnings</p>
+          </fieldset>
+        </div>
+      </section>
+
+      <!-- ─────────────── Controls ─────────────── -->
+      <section id="controls">
+        <h2>Controls</h2>
+        <form action="#controls" method="get">
+          <div data-grid="3">
+            <fieldset>
+              <legend>Text input</legend>
+              <label for="name">Name</label>
+              <input id="name" name="name" type="text" placeholder="block caret, one line tall" />
+              <label for="email">Email (required)</label>
+              <input id="email" name="email" type="email" placeholder="you@example.com" required />
+              <label for="token">Token (invalid)</label>
+              <input id="token" name="token" type="password" value="hunter2" aria-invalid="true" />
+              <label for="path">Path (read-only)</label>
+              <input id="path" name="path" type="text" value="~/src/open.css" readonly />
+              <label for="off">Disabled</label>
+              <input id="off" name="off" type="text" value="not available" disabled />
+              <label for="notes">Notes</label>
+              <textarea id="notes" name="notes" rows="3" placeholder="Multi-line, resizes vertically"></textarea>
+            </fieldset>
+
+            <fieldset>
+              <legend>Choice</legend>
+              <label for="theme">Select</label>
+              <select id="theme" name="theme">
+                <option>opencode</option>
+                <option>tokyonight</option>
+                <option>system</option>
+              </select>
+              <label for="agents">List box</label>
+              <select id="agents" name="agents" size="3">
+                <option selected>build</option>
+                <option>plan</option>
+                <option>review</option>
+              </select>
+              <label><input type="radio" name="mode" value="insert" checked /> Insert</label>
+              <label><input type="radio" name="mode" value="normal" /> Normal</label>
+              <label><input type="radio" name="mode" value="visual" disabled /> Visual (disabled)</label>
+              <hr />
+              <label><input type="checkbox" name="wrap" checked /> Wrap lines</label>
+              <label><input type="checkbox" name="mouse" /> Mouse support</label>
+            </fieldset>
+
+            <fieldset>
+              <legend>Other</legend>
+              <label for="volume">Range</label>
+              <input id="volume" name="volume" type="range" min="0" max="100" value="60" />
+              <label for="count">Number</label>
+              <input id="count" name="count" type="number" value="80" min="40" max="240" />
+              <label for="when">Date</label>
+              <input id="when" name="when" type="date" value="2026-11-14" />
+              <label for="find">Search</label>
+              <input id="find" name="find" type="search" placeholder="/ to search" />
+              <label for="ink">Colour</label>
+              <input id="ink" name="ink" type="color" value="#fab283" />
+              <label for="file">File</label>
+              <input id="file" name="file" type="file" />
+            </fieldset>
+
+            <fieldset data-span="full">
+              <legend>Actions</legend>
+              <menu>
+                <li><button type="submit">Submit</button></li>
+                <li><button type="button">Button</button></li>
+                <li><button type="button" aria-pressed="true">Pressed</button></li>
+                <li><button type="reset">Reset</button></li>
+                <li><button type="button" disabled>Disabled</button></li>
+                <li><a href="#controls" role="button">Link button</a></li>
+                <li><input type="button" value="input type=button" /></li>
+              </menu>
+            </fieldset>
+          </div>
+        </form>
+      </section>
+
+      <!-- ─────────────── Data ─────────────── -->
+      <section id="data">
+        <h2>Table</h2>
+        <table>
+          <caption>
+            Processes — the selected row uses aria-selected="true"
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col" data-align="end">PID</th>
+              <th scope="col">Command</th>
+              <th scope="col">State</th>
+              <th scope="col" data-align="end">CPU %</th>
+              <th scope="col" data-align="end">Mem</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td data-align="end">1</td>
+              <td>init</td>
+              <td data-status="ok">running</td>
+              <td data-align="end">0.0</td>
+              <td data-align="end">12M</td>
+            </tr>
+            <tr aria-selected="true">
+              <td data-align="end">4821</td>
+              <td>opencode serve</td>
+              <td>running</td>
+              <td data-align="end">3.2</td>
+              <td data-align="end">184M</td>
+            </tr>
+            <tr>
+              <td data-align="end">4902</td>
+              <td>bun test --watch</td>
+              <td data-status="warn">sleeping</td>
+              <td data-align="end">0.4</td>
+              <td data-align="end">96M</td>
+            </tr>
+            <tr>
+              <td data-align="end">5117</td>
+              <td>zig build</td>
+              <td data-status="error">exited 1</td>
+              <td data-align="end">0.0</td>
+              <td data-align="end">0M</td>
+            </tr>
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="3">4 processes</td>
+              <td data-align="end">3.6</td>
+              <td data-align="end">292M</td>
+            </tr>
+          </tfoot>
+        </table>
+      </section>
+
+      <!-- ─────────────── Tree + modal ─────────────── -->
+      <div data-grid="2">
+        <section id="tree">
+          <h2>Tree</h2>
+          <details open>
+            <summary>open.css/</summary>
+            <details open>
+              <summary>src/</summary>
+              <ul>
+                <li><a href="#tree">tokens.css</a></li>
+                <li><a href="#tree">panes.css</a></li>
+                <li><a href="#tree">controls.css</a></li>
+              </ul>
+            </details>
+            <details>
+              <summary>docs/</summary>
+              <ul>
+                <li><a href="#tree">mapping.md</a></li>
+              </ul>
+            </details>
+            <ul>
+              <li><a href="#tree">demo.html</a></li>
+              <li><a href="#tree">open.css</a></li>
+            </ul>
+          </details>
+        </section>
+
+        <section id="modal">
+          <h2>Modal and theme</h2>
+          <p>A <code>&lt;dialog&gt;</code> floats above a veil with a hard, cell-offset shadow.</p>
+          <menu>
+            <li><button type="button" onclick="document.getElementById('confirm').showModal()">Open dialog</button></li>
+          </menu>
+          <p>Force a scheme with <code>data-theme</code> on any element:</p>
+          <menu>
+            <li><button type="button" data-set-theme="" aria-pressed="true">Auto</button></li>
+            <li><button type="button" data-set-theme="dark" aria-pressed="false">Dark</button></li>
+            <li><button type="button" data-set-theme="light" aria-pressed="false">Light</button></li>
+          </menu>
+          <p>Prompt: <span data-cursor>opencode run</span></p>
+        </section>
+      </div>
+    </main>
+
+    <!-- Status bar: body > footer -->
+    <footer>
+      <strong>NORMAL</strong>
+      <span><kbd>Tab</kbd> focus</span>
+      <span><kbd>Enter</kbd> select</span>
+      <span><kbd>Esc</kbd> close</span>
+      <span data-status="ok">● ready</span>
+      <span>utf-8 · 1ch × 1.5rem</span>
+    </footer>
+
+    <dialog id="confirm" aria-labelledby="confirm-title">
+      <h3 id="confirm-title">Discard changes?</h3>
+      <p>3 files have unsaved edits. This cannot be undone.</p>
+      <form method="dialog">
+        <menu>
+          <li><button type="submit" value="cancel" autofocus>Cancel</button></li>
+          <li><button type="submit" value="discard" data-status="error">Discard</button></li>
+        </menu>
+      </form>
+    </dialog>
+
+    <script>
+      // Demo only: open.css itself needs no JavaScript.
+      document.querySelectorAll("[data-set-theme]").forEach((button) => {
+        button.addEventListener("click", () => {
+          const theme = button.dataset.setTheme
+          if (theme) document.documentElement.dataset.theme = theme
+          else delete document.documentElement.dataset.theme
+          document
+            .querySelectorAll("[data-set-theme]")
+            .forEach((other) => other.setAttribute("aria-pressed", String(other === button)))
+        })
+      })
+    </script>
+  </body>
+</html>

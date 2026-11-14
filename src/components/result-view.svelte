@@ -1,6 +1,4 @@
 <script lang="ts">
-	import { Button } from "sveltestrap";
-
 	type Props = {
 		result: {
 			filename: string;
@@ -60,8 +58,8 @@
 	}
 </script>
 
-<div class="table-responsive">
-	<table class="table table-sm app-meta-table mb-3 w-auto">
+<div class="app-table-scroll">
+	<table class="app-meta-table">
 		<tbody>
 			<tr>
 				<th scope="row">Package</th>
@@ -69,7 +67,7 @@
 			</tr>
 			<tr>
 				<th scope="row">Archive</th>
-				<td><code class="text-break">{result.filename}</code></td>
+				<td><code class="app-wrap">{result.filename}</code></td>
 			</tr>
 			<tr>
 				<th scope="row">Size</th>
@@ -79,42 +77,49 @@
 	</table>
 </div>
 
-<div class="d-flex flex-wrap gap-2 mb-3">
-	<Button color="primary" disabled={!downloadUrl} on:click={onDownload}>
-		Download bundle
-	</Button>
-	<Button color="outline-secondary" on:click={onReset}>
-		Create another bundle
-	</Button>
-</div>
+<menu>
+	<li>
+		<button
+			type="button"
+			class="app-primary"
+			disabled={!downloadUrl}
+			onclick={onDownload}
+		>
+			Download bundle
+		</button>
+	</li>
+	<li>
+		<button type="button" onclick={onReset}>Create another bundle</button>
+	</li>
+</menu>
 
 {#if downloadError}
-	<div class="alert alert-danger" role="alert">
-		<h3 class="alert-heading h6">Download could not start</h3>
-		<p class="mb-0">{downloadError}</p>
-	</div>
+	<aside role="alert" data-status="error">
+		<h3>Download could not start</h3>
+		<p>{downloadError}</p>
+	</aside>
 {/if}
 
-<h3 class="h5 mt-4">Install</h3>
-<p class="small text-body-secondary mb-2">
+<h3>Install</h3>
+<p class="app-muted">
 	Place the archive in <code>./packages</code>, then run:
 </p>
-<div class="d-flex flex-wrap align-items-start gap-2 mb-2">
+<div class="app-install-row">
 	<pre class="app-log app-install-command"><code>{installCommand}</code></pre>
-	<Button color="outline-secondary" size="sm" on:click={copyCommand}>
-		Copy command
-	</Button>
+	<button type="button" onclick={copyCommand}>Copy command</button>
 </div>
 
 {#if copied}
-	<span class="small text-success" aria-live="polite">Copied</span>
+	<p data-status="ok" aria-live="polite">Copied</p>
 {/if}
 
 {#if copyError}
-	<p class="small text-danger mt-2 mb-0" role="alert">{copyError}</p>
+	<p data-status="error" role="alert">{copyError}</p>
 {/if}
 
-<p class="form-text mb-0">
-	Install scripts are disabled. Packages that require them may need extra
-	preparation.
+<p class="app-muted">
+	<small>
+		Install scripts are disabled. Packages that require them may need extra
+		preparation.
+	</small>
 </p>

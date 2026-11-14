@@ -1,8 +1,19 @@
-<!-- Generated from the packy app mark (blue/cube, tab variant). -->
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-labelledby="title">
+<svg
+	xmlns="http://www.w3.org/2000/svg"
+	viewBox="0 0 8 8"
+	shape-rendering="crispEdges"
+	role="img"
+	aria-labelledby="title"
+>
 	<title id="title">packy</title>
-	<rect width="32" height="32" rx="3.84" fill="#002D9C" />
-	<g transform="translate(3.2 3.2) scale(0.8)" fill="#FFFFFF">
-		<path d="M28.5039,8.1362l-12-7a1,1,0,0,0-1.0078,0l-12,7A1,1,0,0,0,3,9V23a1,1,0,0,0,.4961.8638l12,7a1,1,0,0,0,1.0078,0l12-7A1,1,0,0,0,29,23V9A1,1,0,0,0,28.5039,8.1362ZM16,3.1577,26.0156,9,16,14.8423,5.9844,9ZM5,10.7412l10,5.833V28.2588L5,22.4258ZM17,28.2588V16.5742l10-5.833V22.4258Z" />
+	<rect width="8" height="8" fill="#0c0c0c" />
+	<!-- shadow -->
+	<rect x="3" y="3" width="2" height="2" fill="#fafafa" fill-opacity="0.22" />
+	<!-- p -->
+	<g fill="#fafafa">
+		<rect x="2" y="1" width="4" height="1" />
+		<rect x="2" y="1" width="1" height="6" />
+		<rect x="5" y="1" width="1" height="4" />
+		<rect x="2" y="5" width="4" height="1" />
 	</g>
 </svg>

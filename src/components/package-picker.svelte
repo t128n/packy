@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { Button, Input, Spinner } from "sveltestrap";
 	import { valid, validRange, maxSatisfying } from "semver";
 	import { tick } from "svelte";
 
@@ -590,65 +589,64 @@
 </script>
 
 {#if packument}
-	<div class="border-bottom pb-2 mb-3">
-		<div
-			class="d-flex flex-wrap align-items-start justify-content-between gap-2"
-		>
-			<div class="flex-grow-1">
-				<h2 class="h5 mb-1">{packageName}</h2>
-				{#if packument.description}
-					<p class="text-body-secondary mb-1">{packument.description}</p>
-				{/if}
-				<p class="small mb-0">
-					<span class="text-body-secondary">Requested:</span>
-					{effectiveVersionSpec}{#if resolvedVersion && resolvedVersion !== effectiveVersionSpec}{" · "}<span class="text-body-secondary">Resolved:</span>
-						{resolvedVersion}{:else if !resolvedVersion && effectiveVersionSpec}{" · "}<span class="text-body-secondary">Resolved during build</span>{/if}{#if selectedSize !== undefined}{" · "}{formatBytes(selectedSize)} unpacked{/if}
-				</p>
-			</div>
-			<Button
-				color="outline-secondary"
-				size="sm"
-				on:click={clearSelection}
-				{disabled}>Change package</Button
-			>
+	<div class="app-header-row">
+		<div>
+			<h2>{packageName}</h2>
+			{#if packument.description}
+				<p class="app-muted">{packument.description}</p>
+			{/if}
+			<p>
+				<span class="app-muted">Requested:</span>
+				{effectiveVersionSpec}{#if resolvedVersion && resolvedVersion !== effectiveVersionSpec}{" · "}<span class="app-muted">Resolved:</span>
+					{resolvedVersion}{:else if !resolvedVersion && effectiveVersionSpec}{" · "}<span class="app-muted">Resolved during build</span>{/if}{#if selectedSize !== undefined}{" · "}{formatBytes(selectedSize)} unpacked{/if}
+			</p>
 		</div>
+		<button type="button" onclick={clearSelection} {disabled}>
+			Change package
+		</button>
 	</div>
 
 	{#if isDeprecated && resolvedMeta?.deprecated}
-		<div class="alert alert-warning" role="alert">
-			<h3 class="alert-heading h6">Deprecated version</h3>
-			<p class="mb-0">{resolvedMeta.deprecated}</p>
-		</div>
+		<aside role="alert" data-status="warn">
+			<h3>Deprecated version</h3>
+			<p>{resolvedMeta.deprecated}</p>
+		</aside>
 	{/if}
 
-	<div class="row g-2 align-items-end mb-3">
-		<div class="col-12 col-md-6 col-xl-4">
+	<form
+		class="app-form-row"
+		onsubmit={(event) => {
+			event.preventDefault();
+			start();
+		}}
+	>
+		<div class="app-form-field">
 			{#if customMode}
-				<label class="form-label" for="custom-version">
-					Version specification
-				</label>
-				<Input
+				<label for="custom-version">Version specification</label>
+				<input
 					id="custom-version"
+					type="text"
 					value={customSpec}
 					placeholder="^18.0.0 or next"
-					invalid={Boolean(customSpecError)}
-					feedback={customSpecError || undefined}
 					aria-invalid={customSpecError ? "true" : undefined}
-					on:input={handleCustomSpecInput}
-					bind:inner={customField}
+					oninput={handleCustomSpecInput}
+					bind:this={customField}
 					{disabled}
 				/>
-				<div class="form-text">
-					Exact version, semver range, or published tag.
-				</div>
+				{#if customSpecError}
+					<p data-status="error" role="alert">{customSpecError}</p>
+				{:else}
+					<p class="app-muted">
+						<small>Exact version, semver range, or published tag.</small>
+					</p>
+				{/if}
 			{:else}
-				<label class="form-label" for="version-select">Version</label>
-				<Input
+				<label for="version-select">Version</label>
+				<select
 					id="version-select"
-					type="select"
 					value={versionSpec}
-					on:change={handleVersionChange}
-					bind:inner={versionField}
+					onchange={handleVersionChange}
+					bind:this={versionField}
 					{disabled}
 				>
 					<optgroup label="Dist-tags">
@@ -666,166 +664,135 @@
 							</option>
 						{/each}
 					</optgroup>
-				</Input>
+				</select>
 				{#if capped}
-					<div class="form-text">
-						Showing the {MAX_VISIBLE_VERSIONS} newest versions. Use a
-						custom specification for older versions.
-					</div>
+					<p class="app-muted">
+						<small>
+							Showing the {MAX_VISIBLE_VERSIONS} newest versions. Use a
+							custom specification for older versions.
+						</small>
+					</p>
 				{/if}
 			{/if}
 		</div>
-		<div class="col-auto">
-			<Button color="primary" disabled={!canStart} on:click={start}>
-				Create bundle
-			</Button>
+		<div>
+			<button type="submit" disabled={!canStart}>Create bundle</button>
 		</div>
-	</div>
+	</form>
 
-	<details class="mb-2">
-		<summary class="small text-body-secondary">Advanced options</summary>
-		<div class="mt-2">
+	<details>
+		<summary class="app-muted">Advanced options</summary>
+		<div>
 			{#if customMode}
-				<p class="small text-body-secondary mb-1">
+				<p class="app-muted">
 					Enter an exact version, a semver range, or a published dist-tag.
 				</p>
-				<Button
-					color="link"
-					size="sm"
-					class="p-0"
-					on:click={usePublishedVersions}
-					{disabled}>Browse published versions</Button
-				>
+				<button type="button" onclick={usePublishedVersions} {disabled}>
+					Browse published versions
+				</button>
 			{:else}
-				<p class="small text-body-secondary mb-1">
+				<p class="app-muted">
 					Choose a published version above, or specify a range or tag.
 				</p>
-				<Button
-					color="link"
-					size="sm"
-					class="p-0"
-					on:click={useCustomSpec}
-					{disabled}>Use a version range or tag</Button
-				>
+				<button type="button" onclick={useCustomSpec} {disabled}>
+					Use a version range or tag
+				</button>
 			{/if}
 		</div>
 	</details>
 
 	{#if disabled}
-		<p class="small text-body-secondary mb-0">{disabledReason}</p>
+		<p class="app-muted"><small>{disabledReason}</small></p>
 	{/if}
 {:else}
-	<div class="row mb-2">
-		<div class="col-12 col-xl-8">
-			<label class="form-label" for="package-search">Package</label>
-			<Input
-				id="package-search"
-				type="search"
-				value={searchTerm}
-				placeholder="Search npm packages…"
-				autocomplete="off"
-				spellcheck="false"
-				invalid={Boolean(packageError)}
-				aria-invalid={packageError ? "true" : undefined}
-				disabled={disabled || packageLoading}
-				on:input={handleSearchInput}
-				on:keydown={handleSearchKeydown}
-				bind:inner={searchField}
-			/>
+	<div>
+		<label for="package-search">Package</label>
+		<input
+			id="package-search"
+			type="search"
+			value={searchTerm}
+			placeholder="Search npm packages…"
+			autocomplete="off"
+			spellcheck="false"
+			aria-invalid={packageError ? "true" : undefined}
+			disabled={disabled || packageLoading}
+			oninput={handleSearchInput}
+			onkeydown={handleSearchKeydown}
+			bind:this={searchField}
+		/>
 
-			{#if packageLoading}
-				<div
-					class="d-flex align-items-center gap-2 small text-body-secondary mt-1"
-					aria-live="polite"
-				>
-					<Spinner size="sm" />
-					Loading {pendingPackage}…
-				</div>
-			{:else if packageError}
-				<div class="small text-danger mt-1" role="alert">
-					{packageError}
-				</div>
-				<div class="d-flex flex-wrap gap-3 mt-1">
-					<Button color="link" size="sm" class="p-0" on:click={retryLoad}>
-						Retry
-					</Button>
-					<Button
-						color="link"
-						size="sm"
-						class="p-0"
-						on:click={clearSelection}>Choose another package</Button
+		{#if packageLoading}
+			<p class="app-muted" aria-busy="true" aria-live="polite">
+				Loading {pendingPackage}…
+			</p>
+		{:else if packageError}
+			<aside role="alert" data-status="error">
+				<p>{packageError}</p>
+				<menu>
+					<li>
+						<button type="button" onclick={retryLoad}>Retry</button>
+					</li>
+					<li>
+						<button type="button" onclick={clearSelection}>
+							Choose another package
+						</button>
+					</li>
+				</menu>
+			</aside>
+		{:else if searchLoading}
+			<p class="app-muted" aria-busy="true" aria-live="polite">
+				Searching npm…
+			</p>
+		{:else if searchError}
+			<p data-status="error" role="alert">
+				{searchError}
+				<button type="button" onclick={retrySearch}>Retry</button>
+			</p>
+		{:else if searchResults.length > 0}
+			<div
+				class="app-result-list"
+				bind:this={resultsList}
+				aria-label="Package search results"
+			>
+				{#each searchResults as item, index (item.name)}
+					<button
+						type="button"
+						data-result
+						{disabled}
+						onclick={() => selectPackageValue(item.name)}
+						onkeydown={(event) => handleResultKeydown(event, index)}
 					>
-				</div>
-			{:else if searchLoading}
-				<div
-					class="d-flex align-items-center gap-2 small text-body-secondary mt-1"
-					aria-live="polite"
-				>
-					<Spinner size="sm" />
-					Searching npm…
-				</div>
-			{:else if searchError}
-				<div class="small text-danger mt-1" role="alert">
-					{searchError}
-					<Button
-						color="link"
-						size="sm"
-						class="p-0 ms-1"
-						on:click={retrySearch}>Retry</Button
-					>
-				</div>
-			{:else if searchResults.length > 0}
-				<div
-					class="list-group app-result-list mt-2"
-					bind:this={resultsList}
-					aria-label="Package search results"
-				>
-					{#each searchResults as item, index (item.name)}
+						<strong>{item.name}</strong>
+						{#if item.version}
+							<span class="app-result-meta">{item.version}</span>
+						{/if}
+						{#if item.description}
+							<span class="app-result-meta">
+								— {truncate(item.description, 120)}
+							</span>
+						{/if}
+					</button>
+				{/each}
+			</div>
+		{:else if searchEmptyMessage}
+			<p class="app-muted" role="status">{searchEmptyMessage}</p>
+		{/if}
+
+		{#if !packageLoading && !packageError && searchTerm.trim().length === 0}
+			<menu aria-label="Popular packages">
+				<li class="app-muted">Popular:</li>
+				{#each POPULAR_PACKAGES as name (name)}
+					<li>
 						<button
 							type="button"
-							class="list-group-item list-group-item-action py-2"
-							data-result
-							disabled={disabled}
-							onclick={() => selectPackageValue(item.name)}
-							onkeydown={(event) =>
-								handleResultKeydown(event, index)}
-						>
-							<span class="fw-semibold">{item.name}</span>
-							{#if item.version}
-								<span class="small text-body-secondary ms-2">
-									{item.version}
-								</span>
-							{/if}
-							{#if item.description}
-								<span class="small text-body-secondary ms-2">
-									— {truncate(item.description, 120)}
-								</span>
-							{/if}
-						</button>
-					{/each}
-				</div>
-			{:else if searchEmptyMessage}
-				<p class="small text-body-secondary mt-1 mb-0" role="status">
-					{searchEmptyMessage}
-				</p>
-			{/if}
-
-			{#if !packageLoading && !packageError && searchTerm.trim().length === 0}
-				<div class="small mt-2">
-					<span class="text-body-secondary">Popular:</span>
-					{#each POPULAR_PACKAGES as name}
-						<Button
-							color="link"
-							size="sm"
-							class="p-0 ms-2"
-							disabled={disabled}
-							on:click={() => selectPopular(name)}
+							{disabled}
+							onclick={() => selectPopular(name)}
 						>
 							{name}
-						</Button>
-					{/each}
-				</div>
-			{/if}
-		</div>
+						</button>
+					</li>
+				{/each}
+			</menu>
+		{/if}
 	</div>
 {/if}
